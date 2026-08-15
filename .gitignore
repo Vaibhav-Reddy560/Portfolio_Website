@@ -36,6 +36,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Raw portrait source (7MB+) — only build-portrait.mjs reads this, nothing at
+# runtime does. The generated public/portrait-amber.webp (32KB) is committed;
+# this is kept locally so the script can be re-run if the photo changes.
+public/image-1.png
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

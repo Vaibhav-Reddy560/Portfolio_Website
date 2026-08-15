@@ -1,26 +1,528 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ================================================================== *
+ * CONTROL PANEL
+ * A bone-coloured machine housing bolted to a blueprint drafting
+ * ground, with amber CRT screens inset where the machine talks back.
+ * ================================================================== */
+@theme {
+  --color-blueprint: #3e6ca0;
+  --color-blueprint-dk: #2c4e78;
+  --color-blueprint-lt: #5885b8;
+  --color-bone: #ede6d6;
+  --color-bone-dk: #dcd2bc;
+  --color-navy: #14142a;
+  --color-amber: #e8a33c;
+  --color-rust: #c1462f;
+  --color-crt: #0a0d08;
+  --color-phosphor: #f0a030;
+  --color-phosphor-dim: #8a5e1e;
+
+  --font-octavus: var(--font-octavus), ui-sans-serif, sans-serif;
+  --font-rare: var(--font-rare), ui-sans-serif, sans-serif;
+  --font-jura: var(--font-jura), ui-sans-serif, sans-serif;
+
+  --ease-snap: cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --gutter: 1rem;
+    --bevel: 6px;
+    color-scheme: light;
+  }
+
+  @media (width >= 48rem) {
+    :root {
+      --gutter: 1.75rem;
+    }
+  }
+
+  @media (width >= 64rem) {
+    :root {
+      --gutter: 2.5rem;
+      --bevel: 8px;
+    }
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 4.5rem;
+    /* Background lives here, not on body, so body's grid and vignette layers
+       can sit at z-index -1 without being hidden by a propagated background. */
+    background-color: var(--color-blueprint);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+
+  body {
+    color: var(--color-navy);
+    font-family: var(--font-jura);
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* The drafting grid the whole machine is bolted to. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(
+        color-mix(in srgb, var(--color-bone) 16%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--color-bone) 16%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 46px 46px;
+  }
+
+  /* Vignette, so the ground reads as a lit surface rather than flat fill. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at 50% 35%,
+      transparent 40%,
+      color-mix(in srgb, var(--color-navy) 34%, transparent) 100%
+    );
+  }
+
+  ::selection {
+    background-color: var(--color-amber);
+    color: var(--color-navy);
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-amber);
+    outline-offset: 2px;
+  }
+
+  /* Pixel cursor, mouse users only — touch keeps the native affordances. */
+  @media (pointer: fine) {
+    body {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M3 2 L3 18 L7 14 L10 21 L13 20 L10 13 L16 13 Z' fill='%23EDE6D6' stroke='%2314142A' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E")
+          3 2,
+        auto;
+    }
+    a,
+    button,
+    [role="tab"],
+    summary,
+    label {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M3 2 L3 18 L7 14 L10 21 L13 20 L10 13 L16 13 Z' fill='%23E8A33C' stroke='%2314142A' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E")
+          3 2,
+        pointer;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .shell {
+    width: 100%;
+    max-width: 84rem;
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+
+  /* ---------------- Panel housing ---------------- */
+  .panel {
+    background-color: var(--color-bone);
+    border: 2px solid var(--color-navy);
+    box-shadow: var(--bevel) var(--bevel) 0 var(--color-navy);
+  }
+
+  .panel-inset {
+    background-color: var(--color-bone-dk);
+    border: 2px solid var(--color-navy);
+    box-shadow: inset 2px 2px 0 color-mix(in srgb, var(--color-navy) 22%, transparent);
+  }
+
+  /* ---------------- Hazard stripe ---------------- */
+  .hazard {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--color-amber) 0 10px,
+      var(--color-navy) 10px 20px
+    );
+  }
+
+  .hazard-thin {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--color-amber) 0 6px,
+      var(--color-navy) 6px 12px
+    );
+  }
+
+  /* ---------------- CRT screen ---------------- */
+  .crt {
+    position: relative;
+    background-color: var(--color-crt);
+    color: var(--color-phosphor);
+    overflow: hidden;
+  }
+
+  /* Scanlines + a soft bloom so the phosphor reads as emitted, not printed. */
+  .crt::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-crt) 55%, transparent) 0 1px,
+      transparent 1px 3px
+    );
+  }
+
+  .crt::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background: radial-gradient(
+      ellipse at 50% 50%,
+      color-mix(in srgb, var(--color-phosphor) 10%, transparent) 0%,
+      transparent 65%
+    );
+  }
+
+  .crt-text {
+    text-shadow: 0 0 6px color-mix(in srgb, var(--color-phosphor) 55%, transparent);
+  }
+
+  /* ---------------- Buttons ---------------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 2px solid var(--color-navy);
+    background-color: var(--color-bone);
+    color: var(--color-navy);
+    font-family: var(--font-jura);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.6rem 1.15rem;
+    font-size: 0.8125rem;
+    box-shadow: 4px 4px 0 var(--color-navy);
+    transition:
+      transform 0.08s var(--ease-snap),
+      box-shadow 0.08s var(--ease-snap),
+      background-color 0.15s ease;
+  }
+
+  .btn:hover {
+    background-color: var(--color-amber);
+  }
+
+  /* Physically depresses into its own shadow. */
+  .btn:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0 0 0 var(--color-navy);
+  }
+
+  .btn-primary {
+    background-color: var(--color-rust);
+    color: var(--color-bone);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-amber);
+    color: var(--color-navy);
+  }
+
+  /* ---------------- Type roles ---------------- */
+  .t-name {
+    font-family: var(--font-octavus);
+    font-weight: 900;
+    line-height: 0.86;
+    letter-spacing: 0.01em;
+  }
+
+  .t-head {
+    font-family: var(--font-rare);
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: 0.005em;
+  }
+
+  .t-label {
+    font-family: var(--font-jura);
+    font-weight: 600;
+    font-size: 0.6875rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .t-data {
+    font-family: var(--font-jura);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.08em;
+  }
+
+  /* Rivets — four corner fixings on a housing panel. */
+  .rivets::before,
+  .rivets::after {
+    content: "";
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--color-navy);
+    opacity: 0.55;
+  }
+  .rivets::before {
+    top: 7px;
+    left: 7px;
+    box-shadow: calc(100% + 8px) 0 0 var(--color-navy);
+  }
+  .rivets::after {
+    bottom: 7px;
+    left: 7px;
+    box-shadow: calc(100% + 8px) 0 0 var(--color-navy);
+  }
+}
+
+@layer utilities {
+  .text-pretty {
+    text-wrap: pretty;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Halftone dot field, for depth on flat bone areas. */
+  .halftone {
+    background-image: radial-gradient(
+      var(--color-navy) 1px,
+      transparent 1px
+    );
+    background-size: 7px 7px;
+  }
+}
+
+/* ================================================================== *
+ * Hardware + Y2K primitives
+ * ================================================================== */
+@layer components {
+  /* Checkerboard rule. */
+  .checker {
+    height: 10px;
+    background-image:
+      linear-gradient(45deg, var(--color-navy) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--color-navy) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--color-navy) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--color-navy) 75%);
+    background-size: 10px 10px;
+    background-position:
+      0 0,
+      0 5px,
+      5px -5px,
+      -5px 0;
+    opacity: 0.5;
+  }
+
+  /* Halftone dot field, for depth on flat bone areas. */
+  .halftone-field {
+    background-image: radial-gradient(
+      color-mix(in srgb, var(--color-navy) 55%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 8px 8px;
+  }
+
+  /* Brushed-metal sheen along the top of a housing panel. */
+  .brushed {
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in srgb, #ffffff 55%, transparent) 0%,
+      transparent 22%,
+      transparent 78%,
+      color-mix(in srgb, var(--color-navy) 12%, transparent) 100%
+    );
+  }
+}
+
+/* ================================================================== *
+ * Animation
+ * ================================================================== */
+@keyframes marquee-track {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes radar-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.radar-sweep {
+  animation: radar-sweep 4s linear infinite;
+}
+
+@keyframes globe-spin {
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+.globe-spin {
+  animation: globe-spin 26s linear infinite;
+}
+
+@keyframes wave-bar {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.wave-bar {
+  transform-origin: bottom;
+  animation: wave-bar 1.15s ease-in-out infinite;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-track 34s linear infinite;
+}
+
+@keyframes crt-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 0.82;
+  }
+  96% {
+    opacity: 1;
+  }
+}
+
+.crt-flicker {
+  animation: crt-flicker 7s steps(1, end) infinite;
+}
+
+@keyframes blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.blink {
+  animation: blink 1.06s steps(1, end) infinite;
+}
+
+@keyframes sweep {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(1000%);
+  }
+}
+
+/* A single bright line drifting down a CRT, as on a real tube. */
+.crt-sweep {
+  animation: sweep 6.5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track,
+  .crt-flicker,
+  .blink,
+  .crt-sweep,
+  .radar-sweep,
+  .globe-spin,
+  .wave-bar {
+    animation: none;
+  }
+  /* Bars would otherwise sit at their 0% keyframe scale and read as broken. */
+  .wave-bar {
+    transform: scaleY(0.7);
+  }
+}
+
+/* ================================================================== *
+ * Lightbox
+ * ================================================================== */
+dialog.lightbox {
+  max-width: 100vw;
+  max-height: 100dvh;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+dialog.lightbox::backdrop {
+  background-color: color-mix(in srgb, #0a0d08 86%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+/* ================================================================== *
+ * Gallery
+ * ================================================================== */
+.gallery {
+  column-gap: 1rem;
+  columns: 1;
+}
+
+@media (width >= 40rem) {
+  .gallery {
+    columns: 2;
+  }
+}
+
+@media (width >= 64rem) {
+  .gallery {
+    columns: 3;
+  }
+}
+
+.gallery > * {
+  break-inside: avoid;
+  margin-bottom: 1rem;
 }
