@@ -41,6 +41,17 @@ yarn-error.log*
 # this is kept locally so the script can be re-run if the photo changes.
 public/image-1.png
 
+# Raw product screenshots — full-size sources for the optimized copies at
+# public/work/easy-club/product.webp and public/work/opacitys/product.webp,
+# which are what the site actually serves. Kept locally for future re-exports.
+public/easyclub.png
+public/opacitys.png
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code local skill state — installed/cached per machine, not app code.
+.agents/
+.claude/
+skills-lock.json

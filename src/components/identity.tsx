@@ -1,14 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { profile, tools } from '@/content/profile';
+import { profile as staticProfile, tools } from '@/content/profile';
 import { Led, Radar, SerialPlate } from './hardware';
 import { Globe, Starburst, Waveform } from './y2k';
 
 /**
  * The machine's main screen. The name is the only place Octavus appears.
  */
-export function Identity() {
+type ProfileData = typeof staticProfile & { portrait?: string };
+
+export function Identity({ data = staticProfile }: { data?: ProfileData } = {}) {
+  const profile = data;
   return (
     <div className="relative">
       <div className="crt crt-flicker relative overflow-hidden px-4 py-10 sm:px-8 sm:py-14 lg:py-20">

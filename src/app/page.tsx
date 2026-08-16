@@ -13,6 +13,17 @@ import {
 import { Win, WindowProvider } from '@/components/window-system';
 import { Work } from '@/components/work';
 import { Ornament } from '@/components/y2k';
+import {
+  getAdditionalRoles,
+  getBuilds,
+  getEasyClub,
+  getDesigns,
+  getEducation,
+  getExperience,
+  getOpacitys,
+  getProfile,
+  getSkillGroups,
+} from '@/lib/content';
 
 /** Chrome ornament used to separate the major runs of windows. */
 function Divider() {
@@ -25,7 +36,31 @@ function Divider() {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  // All loaders are cached and tagged, so the page still prerenders. Fetched in
+  // parallel because none of them depend on each other.
+  const [
+    profile,
+    designs,
+    builds,
+    easyClub,
+    opacitys,
+    roles,
+    additionalRoles,
+    skillGroups,
+    education,
+  ] = await Promise.all([
+    getProfile(),
+    getDesigns(),
+    getBuilds(),
+    getEasyClub(),
+    getOpacitys(),
+    getExperience(),
+    getAdditionalRoles(),
+    getSkillGroups(),
+    getEducation(),
+  ]);
+
   return (
     <>
       <BootSequence />
@@ -40,48 +75,48 @@ export default function Home() {
 
         <main className="shell space-y-6 py-6 pb-24 sm:space-y-8 sm:py-10">
           <Win id="identity" index="00" title="Identity">
-            <Identity />
+            <Identity data={profile} />
           </Win>
 
           <Win id="work" index="01" title="Selected Work">
-            <Work />
+            <Work designs={designs} builds={builds} />
           </Win>
 
           <Divider />
 
           <Win id="easy-club" index="02" title="Easy Club">
-            <EasyClub />
+            <EasyClub data={easyClub} />
           </Win>
 
           <Win id="opacitys" index="03" title="Opacitys">
-            <Opacitys />
+            <Opacitys data={opacitys} />
           </Win>
 
           <Divider />
 
           <Win id="personnel" index="04" title="Personnel File">
-            <PersonnelFile />
+            <PersonnelFile data={profile} />
           </Win>
 
           <Win id="service" index="05" title="Experience">
-            <ServiceRecord />
+            <ServiceRecord roles={roles} />
           </Win>
 
           <Win id="capabilities" index="06" title="Skills">
-            <Capabilities />
+            <Capabilities groups={skillGroups} />
           </Win>
 
           <Win id="education" index="07" title="Education & Beyond">
-            <EducationBeyond />
+            <EducationBeyond entries={education} roles={additionalRoles} data={profile} />
           </Win>
 
           <Divider />
 
           <Win id="transmit" index="08" title="Transmit">
-            <Transmit />
+            <Transmit data={profile} />
           </Win>
 
-          <Colophon />
+          <Colophon data={profile} />
         </main>
       </WindowProvider>
 

@@ -48,11 +48,15 @@ To fill one:
 `ratio` is width ÷ height and drives the slot's shape — set it to match your
 image so the layout never shifts.
 
-Two product slots live outside the gallery, in
-`src/components/case-studies.tsx`:
+Two product slots live outside the gallery, wired in `ProductSlot` inside
+`src/components/case-studies.tsx`, currently filled:
 
 - `/work/easy-club/product.webp`
 - `/work/opacitys/product.webp`
+
+To replace either, overwrite the file at the same path and dimensions stay
+consistent automatically. Drop the `src` prop on that `<ProductSlot>` call to
+go back to the "NO SIGNAL" placeholder instead.
 
 ## Portrait
 

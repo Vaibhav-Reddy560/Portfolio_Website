@@ -1,8 +1,9 @@
 'use client';
 
 import { motion, useReducedMotion } from 'motion/react';
+import Image from 'next/image';
 import type { ReactNode } from 'react';
-import { easyClub, opacitys } from '@/content/case-studies';
+import { easyClub as staticEasyClub, opacitys as staticOpacitys } from '@/content/case-studies';
 import { Barcode, Decal, Gauge, Led, SerialPlate } from './hardware';
 import { Atom, Checker, Starburst, Waveform } from './y2k';
 
@@ -41,7 +42,10 @@ function Strip({ children, right }: { children: ReactNode; right?: ReactNode }) 
 
 /* ================================================================= */
 
-export function EasyClub() {
+type EasyClubData = typeof staticEasyClub & { image?: string };
+
+export function EasyClub({ data = staticEasyClub }: { data?: EasyClubData } = {}) {
+  const easyClub = data;
   return (
     <div className="relative p-4 sm:p-6">
       <div className="halftone-field pointer-events-none absolute inset-0 opacity-[0.06]" />
@@ -86,7 +90,13 @@ export function EasyClub() {
         </div>
 
         <Reveal delay={0.1} className="self-start lg:col-span-5">
-          <ProductSlot path="/work/easy-club/product.webp" label="Easy Club" />
+          <ProductSlot
+            src="/work/easy-club/product.webp"
+            path="/work/easy-club/product.webp"
+            label="Easy Club"
+            alt="Easy Club's My Team dashboard, showing the core roster with roles and skills."
+            ratio={1400 / 910}
+          />
         </Reveal>
       </div>
 
@@ -131,7 +141,10 @@ export function EasyClub() {
 
 /* ================================================================= */
 
-export function Opacitys() {
+type OpacitysData = typeof staticOpacitys & { image?: string };
+
+export function Opacitys({ data = staticOpacitys }: { data?: OpacitysData } = {}) {
+  const opacitys = data;
   return (
     <div className="relative p-4 sm:p-6">
       <Starburst
@@ -179,7 +192,13 @@ export function Opacitys() {
         </div>
 
         <Reveal delay={0.1} className="self-start lg:col-span-5">
-          <ProductSlot path="/work/opacitys/product.webp" label="Opacitys" />
+          <ProductSlot
+            src="/work/opacitys/product.webp"
+            path="/work/opacitys/product.webp"
+            label="Opacitys"
+            alt="Opacitys landing page with a chrome wordmark over a rainbow gradient backdrop."
+            ratio={1400 / 910}
+          />
         </Reveal>
       </div>
 
@@ -275,10 +294,37 @@ export function Opacitys() {
 
 /* ================================================================= */
 
-/** Labelled CRT slot standing in until a product screenshot is supplied. */
-function ProductSlot({ path, label }: { path: string; label: string }) {
+/**
+ * Labelled screen slot: a real screenshot when `src` is supplied, otherwise a
+ * CRT "NO SIGNAL" placeholder.
+ *
+ * The two are deliberately built differently. The empty state uses the `.crt`
+ * class for its scanline + phosphor-bloom overlay — appropriate there, since
+ * there's no image to obscure. A real screenshot skips `.crt` entirely and
+ * uses a plain dark ground instead, so the picture reads clean rather than
+ * washed out under a texture meant for glowing text.
+ *
+ * `ratio` (width / height) sizes the frame to match the actual image, so
+ * `object-cover` has nothing to crop — pass the source image's real ratio.
+ */
+function ProductSlot({
+  src,
+  path,
+  label,
+  alt,
+  ratio = 4 / 3,
+}: {
+  src?: string;
+  path: string;
+  label: string;
+  alt?: string;
+  ratio?: number;
+}) {
   return (
-    <div className="crt relative flex aspect-[4/3] items-center justify-center border-2 border-navy">
+    <div
+      className="relative flex items-center justify-center overflow-hidden border-2 border-navy bg-crt"
+      style={{ aspectRatio: ratio }}
+    >
       {(
         [
           'left-1.5 top-1.5 border-l-2 border-t-2',
@@ -287,19 +333,39 @@ function ProductSlot({ path, label }: { path: string; label: string }) {
           'right-1.5 bottom-1.5 border-b-2 border-r-2',
         ] as const
       ).map((pos) => (
-        <span key={pos} aria-hidden className={`absolute h-3 w-3 border-phosphor/45 ${pos}`} />
+        <span
+          key={pos}
+          aria-hidden
+          className={`absolute z-10 h-3 w-3 border-phosphor/60 ${pos}`}
+        />
       ))}
 
-      <div className="relative z-10 px-4 text-center">
-        <p className="t-data crt-text text-[10px] uppercase tracking-[0.22em] text-phosphor/80">
-          <span className="blink" aria-hidden>
-            ▮
-          </span>{' '}
-          No signal
-        </p>
-        <p className="t-data mt-2 text-[9px] leading-snug text-phosphor/40">{label} capture</p>
-        <p className="t-data mt-1 break-all text-[9px] leading-snug text-phosphor/30">{path}</p>
-      </div>
+      {src ? (
+        <Image
+          src={src}
+          alt={alt ?? `${label} product screenshot`}
+          fill
+          sizes="(max-width: 64rem) 100vw, 40vw"
+          className="object-cover"
+        />
+      ) : (
+        <div className="crt absolute inset-0 flex items-center justify-center">
+          <div className="relative z-10 px-4 text-center">
+            <p className="t-data crt-text text-[10px] uppercase tracking-[0.22em] text-phosphor/80">
+              <span className="blink" aria-hidden>
+                ▮
+              </span>{' '}
+              No signal
+            </p>
+            <p className="t-data mt-2 text-[9px] leading-snug text-phosphor/40">
+              {label} capture
+            </p>
+            <p className="t-data mt-1 break-all text-[9px] leading-snug text-phosphor/30">
+              {path}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

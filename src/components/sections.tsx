@@ -3,11 +3,25 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import Image from 'next/image';
-import { additionalRoles, experience } from '@/content/experience';
-import { profile } from '@/content/profile';
-import { education, skillGroups } from '@/content/skills';
+import {
+  additionalRoles as staticAdditional,
+  experience as staticExperience,
+  type Role,
+} from '@/content/experience';
+import { profile as staticProfile } from '@/content/profile';
+import {
+  education as staticEducation,
+  skillGroups as staticSkillGroups,
+} from '@/content/skills';
 import { Barcode, Led, Rivets, SerialPlate, Vents } from './hardware';
 import { Checker, Ornament, Starburst } from './y2k';
+
+/**
+ * Every section takes its content as an optional prop, defaulting to the static
+ * file. The server passes Supabase-backed data in; the defaults keep these
+ * components renderable standalone and safe if a loader returns nothing.
+ */
+type ProfileData = typeof staticProfile & { portrait?: string };
 
 /** Scroll reveal. Motion rather than a CSS view() timeline, which Firefox still lacks. */
 function Reveal({
@@ -64,7 +78,8 @@ function renderEmphasis(text: string) {
   );
 }
 
-export function PersonnelFile() {
+export function PersonnelFile({ data = staticProfile }: { data?: ProfileData } = {}) {
+  const profile = data;
   const paragraphs = profile.about.slice(0, -1);
   const signature = profile.about.at(-1) ?? '';
 
@@ -120,8 +135,8 @@ export function PersonnelFile() {
 
           <div className="crt relative">
             <Image
-              src="/portrait-amber.webp"
-              alt="Vaibhav Reddy"
+              src={profile.portrait ?? '/portrait-amber.webp'}
+              alt={`${profile.first} ${profile.last}`}
               width={620}
               height={694}
               priority={false}
@@ -167,8 +182,10 @@ export function PersonnelFile() {
 
 /* ================================================================= */
 
-export function ServiceRecord() {
-  const roles = [...experience].sort((a, b) => b.order - a.order);
+export function ServiceRecord({
+  roles: input = staticExperience,
+}: { roles?: Role[] } = {}) {
+  const roles = [...input].sort((a, b) => b.order - a.order);
 
   return (
     <div className="p-4 sm:p-6">
@@ -222,7 +239,10 @@ export function ServiceRecord() {
 
 /* ================================================================= */
 
-export function Capabilities() {
+export function Capabilities({
+  groups = staticSkillGroups,
+}: { groups?: typeof staticSkillGroups } = {}) {
+  const skillGroups = groups;
   return (
     <div className="grid gap-3 p-4 sm:p-6 lg:grid-cols-3">
       {skillGroups.map((group, i) => (
@@ -248,7 +268,18 @@ export function Capabilities() {
 
 /* ================================================================= */
 
-export function EducationBeyond() {
+export function EducationBeyond({
+  entries = staticEducation,
+  roles = staticAdditional,
+  data = staticProfile,
+}: {
+  entries?: typeof staticEducation;
+  roles?: typeof staticAdditional;
+  data?: ProfileData;
+} = {}) {
+  const education = entries;
+  const additionalRoles = roles;
+  const profile = data;
   return (
     <div className="grid gap-5 p-4 sm:p-6 lg:grid-cols-12">
       <div className="lg:col-span-7">
@@ -319,9 +350,8 @@ export function EducationBeyond() {
 
 /* ================================================================= */
 
-const { contact } = profile;
-
-export function Transmit() {
+export function Transmit({ data = staticProfile }: { data?: ProfileData } = {}) {
+  const contact = data.contact;
   return (
     <div className="p-4 sm:p-6">
       <div className="crt relative border-2 border-navy p-5 sm:p-8">
@@ -347,7 +377,7 @@ export function Transmit() {
 
       <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <Channel label="Phone">
-          <ObfuscatedPhone />
+          <ObfuscatedPhone parts={contact.phoneParts} />
         </Channel>
         <Channel label="LinkedIn">
           <a
@@ -392,11 +422,11 @@ function Channel({ label, children }: { label: string; children: ReactNode }) {
  * Public by choice, but assembled on the client so the literal string never
  * appears in the served HTML that scrapers read.
  */
-function ObfuscatedPhone() {
+function ObfuscatedPhone({ parts }: { parts: readonly string[] }) {
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
 
-  const number = contact.phoneParts.join('');
+  const number = parts.join('');
   if (!ready) return <span className="text-xs text-navy/40">…</span>;
 
   return (
@@ -408,7 +438,8 @@ function ObfuscatedPhone() {
 
 /* ================================================================= */
 
-export function Colophon() {
+export function Colophon({ data = staticProfile }: { data?: ProfileData } = {}) {
+  const profile = data;
   return (
     <footer className="panel relative mt-6 sm:mt-8">
       <Rivets />

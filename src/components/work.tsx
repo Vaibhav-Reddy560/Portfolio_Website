@@ -3,21 +3,37 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { builds, designs, type DesignPiece } from '@/content/work';
+import {
+  builds as staticBuilds,
+  designs as staticDesigns,
+  type BuildProject,
+  type DesignPiece,
+} from '@/content/work';
 import { Decal } from './hardware';
 
 type Filter = 'all' | 'design' | 'build';
 
-const FILTERS: { id: Filter; label: string; count: number }[] = [
-  { id: 'all', label: 'All', count: designs.length + builds.length },
-  { id: 'design', label: 'Design', count: designs.length },
-  { id: 'build', label: 'Build', count: builds.length },
-];
-
-export function Work() {
+/**
+ * Content arrives from the server (Supabase, with a static fallback). The props
+ * default to the static content so this component still renders standalone.
+ */
+export function Work({
+  designs = staticDesigns,
+  builds = staticBuilds,
+}: {
+  designs?: DesignPiece[];
+  builds?: BuildProject[];
+} = {}) {
   const [filter, setFilter] = useState<Filter>('all');
   const [open, setOpen] = useState<number | null>(null);
   const reduced = useReducedMotion();
+
+  // Counts depend on props, so they are derived here rather than at module scope.
+  const FILTERS: { id: Filter; label: string; count: number }[] = [
+    { id: 'all', label: 'All', count: designs.length + builds.length },
+    { id: 'design', label: 'Design', count: designs.length },
+    { id: 'build', label: 'Build', count: builds.length },
+  ];
 
   const showBuilds = filter === 'all' || filter === 'build';
   const showDesigns = filter === 'all' || filter === 'design';

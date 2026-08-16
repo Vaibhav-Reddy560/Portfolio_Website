@@ -59,6 +59,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       className={`${octavus.variable} ${rare.variable} ${jura.variable} h-full`}
     >
       <body className="min-h-full">
