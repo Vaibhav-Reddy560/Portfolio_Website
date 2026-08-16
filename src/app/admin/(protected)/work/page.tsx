@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { imageUrl } from '@/lib/content';
 import { authClient } from '@/lib/supabase/server';
-import { DeleteButton, PublishToggle } from './row-actions';
+import { AttachImageButton, DeleteButton, EditableMeta, PublishToggle } from './row-actions';
 
 type DesignRow = {
   id: string;
@@ -52,13 +52,18 @@ export default async function WorkPage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {designs.map((design) => (
           <article key={design.id} className="panel-inset overflow-hidden">
-            <div className="crt relative flex aspect-[4/3] items-center justify-center border-b-2 border-navy">
+            <div
+              className={`relative flex aspect-[4/3] items-center justify-center border-b-2 border-navy ${
+                design.image_path ? 'bg-crt' : 'crt'
+              }`}
+            >
               {design.image_path ? (
                 <Image
                   src={imageUrl(design.image_path) ?? ''}
                   alt=""
                   width={400}
                   height={Math.round(400 / design.ratio)}
+                  unoptimized
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -74,12 +79,10 @@ export default async function WorkPage() {
             </div>
 
             <div className="p-3">
-              <p className="t-head truncate text-sm uppercase leading-tight">{design.title}</p>
-              <p className="t-data mt-1 truncate text-[10px] uppercase tracking-[0.1em] text-navy/55">
-                {design.context} · {design.kind} · {design.year}
-              </p>
+              <EditableMeta design={design} />
 
               <div className="mt-3 flex flex-wrap gap-1.5">
+                <AttachImageButton id={design.id} hasImage={Boolean(design.image_path)} />
                 <PublishToggle id={design.id} published={design.published} />
                 <DeleteButton id={design.id} imagePath={design.image_path} title={design.title} />
               </div>

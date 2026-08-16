@@ -187,7 +187,7 @@ function Slot({
             width={1400}
             height={Math.round(1400 / piece.ratio)}
             unoptimized
-            className="w-full border-b-2 border-navy"
+            className="w-full border-b-2 border-navy bg-crt"
           />
         ) : (
           <EmptySlot piece={piece} />
@@ -318,8 +318,8 @@ function Lightbox({
     >
       {piece ? (
         <div className="flex h-full items-center justify-center p-3 sm:p-6">
-          <div className="panel flex max-h-full w-full max-w-4xl flex-col">
-            <header className="flex items-stretch justify-between border-b-2 border-navy bg-bone-dk">
+          <div className="panel grid h-[80dvh] w-full max-w-3xl grid-rows-[auto_1fr] overflow-hidden">
+            <header className="flex min-w-0 items-stretch justify-between border-b-2 border-navy bg-bone-dk">
               <div className="min-w-0 px-3 py-2">
                 <p className="t-head truncate text-sm uppercase">{piece.title}</p>
                 <p className="t-data truncate text-[10px] uppercase tracking-[0.12em] text-navy/60">
@@ -354,16 +354,22 @@ function Lightbox({
               </div>
             </header>
 
-            <div className="min-h-0 flex-1 overflow-auto bg-bone-dk p-3">
+            <div className="min-h-0 min-w-0 bg-bone-dk p-3">
               {piece.src ? (
-                <Image
-                  src={piece.src}
-                  alt={piece.alt ?? `${piece.title} — ${piece.kind} for ${piece.context}`}
-                  width={1400}
-                  height={Math.round(1400 / piece.ratio)}
-                  unoptimized
-                  className="mx-auto h-auto w-auto max-w-full border-2 border-navy"
-                />
+                <div className="relative h-full w-full">
+                  {/* A grid row's `1fr` track gets a genuinely definite size
+                      once the grid container's height is resolved (here, by
+                      max-height), unlike a flex-1 chain with only max-height
+                      on the ancestor — which left `fill`'s containing block
+                      height indefinite and collapsed it to ~0. */}
+                  <Image
+                    src={piece.src}
+                    alt={piece.alt ?? `${piece.title} — ${piece.kind} for ${piece.context}`}
+                    fill
+                    unoptimized
+                    className="border-2 border-navy bg-crt object-contain"
+                  />
+                </div>
               ) : null}
             </div>
           </div>

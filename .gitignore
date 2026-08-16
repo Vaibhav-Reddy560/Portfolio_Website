@@ -47,6 +47,12 @@ public/image-1.png
 public/easyclub.png
 public/opacitys.png
 
+# Raw design source folder — full-resolution originals, bulk-imported into
+# the designs table already. Nothing at runtime reads this directly; the
+# served copies live in Supabase Storage. ~445MB, kept locally only in case
+# a piece needs re-processing.
+public/Vaibhav.Reddy-Designs/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

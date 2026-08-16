@@ -522,6 +522,18 @@ dialog.lightbox::backdrop {
   }
 }
 
+@media (width >= 80rem) {
+  .gallery {
+    columns: 4;
+  }
+}
+
+@media (width >= 96rem) {
+  .gallery {
+    columns: 5;
+  }
+}
+
 .gallery > * {
   break-inside: avoid;
   margin-bottom: 1rem;

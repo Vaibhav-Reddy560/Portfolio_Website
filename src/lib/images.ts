@@ -20,16 +20,19 @@ export type ProcessedImage = {
 };
 
 /**
- * Standard artwork treatment: trim the surrounding page margin back to the art,
- * then encode losslessly to PNG. No resize, no lossy re-encode — the uploaded
- * pixels reach the gallery unchanged, at full resolution.
+ * Standard artwork treatment: encode losslessly to PNG. No resize, no lossy
+ * re-encode, no trim by default — the uploaded pixels reach the gallery
+ * completely unchanged, at full resolution and full frame.
  *
- * `trim` matters for scans and PDF exports, which arrive letterboxed inside a
- * white page — without it the gallery inherits the margin instead of the piece.
+ * `trim` is opt-in, off by default. It exists for scans and PDF exports that
+ * arrive letterboxed inside a blank page, but the same threshold heuristic
+ * will happily eat into a real design that has a large flat-colour area near
+ * an edge — which is exactly what it did to real uploads before this default
+ * flipped. Only pass `trim: true` for a source you've confirmed is padded.
  */
 export async function processArtwork(
   input: Buffer,
-  { trim = true } = {},
+  { trim = false } = {},
 ): Promise<ProcessedImage> {
   let pipeline = sharp(input);
 

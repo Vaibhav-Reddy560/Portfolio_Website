@@ -100,6 +100,87 @@ export async function saveDesign(_prev: SaveState, formData: FormData): Promise<
   }
 }
 
+export type AttachImageState = { error?: string };
+
+/**
+ * Fills (or replaces) the artwork on an existing row — the seeded slots ship
+ * with real title/context/kind/year already, so unlike `saveDesign` this
+ * never touches metadata, just the image.
+ */
+export async function attachImage(id: string, formData: FormData): Promise<AttachImageState> {
+  const supabase = await authClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: 'Session expired — sign in again.' };
+
+  const file = formData.get('image');
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: 'Choose an image first.' };
+  }
+
+  const { data: row, error: fetchError } = await supabase
+    .from('designs')
+    .select('slug, image_path')
+    .eq('id', id)
+    .maybeSingle();
+  if (fetchError || !row) return { error: 'Could not find that design.' };
+
+  try {
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const processed = await processArtwork(bytes);
+    const path = `designs/${row.slug}.png`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('work')
+      .upload(path, processed.data, { contentType: 'image/png', upsert: true });
+    if (uploadError) throw uploadError;
+
+    // Upsert-by-slug can leave a stale file behind if the old image had a
+    // different extension (e.g. an old .webp from before the PNG switch).
+    if (row.image_path && row.image_path !== path) {
+      await supabase.storage.from('work').remove([row.image_path]).catch(() => {});
+    }
+
+    const { error: updateError } = await supabase
+      .from('designs')
+      .update({ image_path: path, blur_data_url: processed.blurDataURL, ratio: processed.ratio })
+      .eq('id', id);
+    if (updateError) throw updateError;
+
+    revalidatePath('/');
+    return {};
+  } catch (error) {
+    console.error('[work] attach image failed:', error);
+    return { error: 'Something went wrong uploading this — try again.' };
+  }
+}
+
+export type UpdateMetaState = { error?: string };
+
+/** Edits title/context/kind/year on an existing row — never touches the image. */
+export async function updateDesignMeta(id: string, formData: FormData): Promise<UpdateMetaState> {
+  const supabase = await authClient();
+
+  const title = String(formData.get('title') ?? '').trim();
+  const context = String(formData.get('context') ?? '').trim();
+  const kind = String(formData.get('kind') ?? '').trim();
+  const year = String(formData.get('year') ?? '').trim();
+
+  if (!title || !context) {
+    return { error: 'Title and context are required.' };
+  }
+
+  const { error } = await supabase
+    .from('designs')
+    .update({ title, context, kind, year })
+    .eq('id', id);
+  if (error) return { error: error.message };
+
+  revalidatePath('/');
+  return {};
+}
+
 /** Flips published without touching anything else. */
 export async function togglePublish(id: string, next: boolean) {
   const supabase = await authClient();
