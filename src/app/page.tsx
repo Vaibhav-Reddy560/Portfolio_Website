@@ -112,7 +112,7 @@ export default async function Home() {
 
           <Divider />
 
-          <Win id="transmit" index="08" title="Transmit">
+          <Win id="transmit" index="08" title="Contact">
             <Transmit data={profile} />
           </Win>
 

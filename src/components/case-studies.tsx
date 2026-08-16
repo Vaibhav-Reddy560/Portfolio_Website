@@ -91,8 +91,8 @@ export function EasyClub({ data = staticEasyClub }: { data?: EasyClubData } = {}
 
         <Reveal delay={0.1} className="self-start lg:col-span-5">
           <ProductSlot
-            src="/work/easy-club/product.webp"
-            path="/work/easy-club/product.webp"
+            src="/work/easy-club/product.png"
+            path="/work/easy-club/product.png"
             label="Easy Club"
             alt="Easy Club's My Team dashboard, showing the core roster with roles and skills."
             ratio={1400 / 910}
@@ -193,8 +193,8 @@ export function Opacitys({ data = staticOpacitys }: { data?: OpacitysData } = {}
 
         <Reveal delay={0.1} className="self-start lg:col-span-5">
           <ProductSlot
-            src="/work/opacitys/product.webp"
-            path="/work/opacitys/product.webp"
+            src="/work/opacitys/product.png"
+            path="/work/opacitys/product.png"
             label="Opacitys"
             alt="Opacitys landing page with a chrome wordmark over a rainbow gradient backdrop."
             ratio={1400 / 910}
@@ -345,7 +345,7 @@ function ProductSlot({
           src={src}
           alt={alt ?? `${label} product screenshot`}
           fill
-          sizes="(max-width: 64rem) 100vw, 40vw"
+          unoptimized
           className="object-cover"
         />
       ) : (

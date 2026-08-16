@@ -79,10 +79,10 @@ export async function saveProject(_prev: SaveState, formData: FormData): Promise
     if (file instanceof File && file.size > 0) {
       const bytes = Buffer.from(await file.arrayBuffer());
       const processed = await processArtwork(bytes, { trim: false });
-      const path = `projects/${id || slugify(name)}/product.webp`;
+      const path = `projects/${id || slugify(name)}/product.png`;
       const { error: uploadError } = await supabase.storage
         .from('work')
-        .upload(path, processed.data, { contentType: 'image/webp', upsert: true });
+        .upload(path, processed.data, { contentType: 'image/png', upsert: true });
       if (uploadError) throw uploadError;
       row.image_path = path;
       row.blur_data_url = processed.blurDataURL;

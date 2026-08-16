@@ -186,7 +186,7 @@ function Slot({
             alt={piece.alt ?? `${piece.title} — ${piece.kind} for ${piece.context}`}
             width={1400}
             height={Math.round(1400 / piece.ratio)}
-            sizes="(max-width: 40rem) 100vw, (max-width: 64rem) 50vw, 33vw"
+            unoptimized
             className="w-full border-b-2 border-navy"
           />
         ) : (
@@ -361,7 +361,7 @@ function Lightbox({
                   alt={piece.alt ?? `${piece.title} — ${piece.kind} for ${piece.context}`}
                   width={1400}
                   height={Math.round(1400 / piece.ratio)}
-                  sizes="90vw"
+                  unoptimized
                   className="mx-auto h-auto w-auto max-w-full border-2 border-navy"
                 />
               ) : null}

@@ -66,11 +66,11 @@ export async function saveDesign(_prev: SaveState, formData: FormData): Promise<
 
     const baseSlug = slugify(title);
     const slug = await uniqueSlug(baseSlug);
-    const path = `designs/${slug}.webp`;
+    const path = `designs/${slug}.png`;
 
     const { error: uploadError } = await supabase.storage
       .from('work')
-      .upload(path, processed.data, { contentType: 'image/webp', upsert: true });
+      .upload(path, processed.data, { contentType: 'image/png', upsert: true });
     if (uploadError) throw uploadError;
 
     const { count } = await supabase

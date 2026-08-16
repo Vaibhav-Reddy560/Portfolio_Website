@@ -21,14 +21,15 @@ export type ProcessedImage = {
 
 /**
  * Standard artwork treatment: trim the surrounding page margin back to the art,
- * cap the width, and encode to WebP.
+ * then encode losslessly to PNG. No resize, no lossy re-encode — the uploaded
+ * pixels reach the gallery unchanged, at full resolution.
  *
  * `trim` matters for scans and PDF exports, which arrive letterboxed inside a
  * white page — without it the gallery inherits the margin instead of the piece.
  */
 export async function processArtwork(
   input: Buffer,
-  { maxWidth = 1400, quality = 82, trim = true } = {},
+  { trim = true } = {},
 ): Promise<ProcessedImage> {
   let pipeline = sharp(input);
 
@@ -43,8 +44,7 @@ export async function processArtwork(
   }
 
   const { data, info } = await pipeline
-    .resize({ width: maxWidth, withoutEnlargement: true })
-    .webp({ quality })
+    .png()
     .toBuffer({ resolveWithObject: true });
 
   const blur = await sharp(data)

@@ -104,7 +104,7 @@ export function PersonnelFile({ data = staticProfile }: { data?: ProfileData } =
             <p
               className={
                 i === 0
-                  ? 'text-pretty text-lg leading-relaxed text-navy'
+                  ? 'text-pretty leading-relaxed text-navy'
                   : 'mt-4 text-pretty leading-relaxed text-navy/75'
               }
             >

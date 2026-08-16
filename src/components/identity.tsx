@@ -63,7 +63,7 @@ export function Identity({ data = staticProfile }: { data?: ProfileData } = {}) 
             Selected work
           </a>
           <a href="#transmit" className="btn">
-            Transmit
+            Contact
           </a>
           <a href={profile.contact.resume} className="btn">
             Résumé ↓

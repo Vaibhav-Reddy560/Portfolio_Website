@@ -12,7 +12,7 @@ const MODULES = [
   ['service', 'EXPERIENCE'],
   ['capabilities', 'SKILLS'],
   ['education', 'EDUCATION'],
-  ['transmit', 'TRANSMIT'],
+  ['transmit', 'CONTACT'],
 ] as const;
 
 /**
