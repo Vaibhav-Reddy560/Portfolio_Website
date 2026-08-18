@@ -13,6 +13,7 @@ type DesignRow = {
   year: string;
   ratio: number;
   image_path: string | null;
+  thumb_path: string | null;
   published: boolean;
 };
 
@@ -21,7 +22,7 @@ async function getDesigns(): Promise<DesignRow[]> {
   // Authenticated RLS sees drafts too — the whole point of this screen.
   const { data, error } = await supabase
     .from('designs')
-    .select('id,slug,title,context,kind,year,ratio,image_path,published')
+    .select('id,slug,title,context,kind,year,ratio,image_path,thumb_path,published')
     .order('sort_order', { ascending: true });
   if (error) throw error;
   return data ?? [];
@@ -59,7 +60,7 @@ export default async function WorkPage() {
             >
               {design.image_path ? (
                 <Image
-                  src={imageUrl(design.image_path) ?? ''}
+                  src={imageUrl(design.thumb_path ?? design.image_path) ?? ''}
                   alt=""
                   width={400}
                   height={Math.round(400 / design.ratio)}
@@ -84,7 +85,12 @@ export default async function WorkPage() {
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <AttachImageButton id={design.id} hasImage={Boolean(design.image_path)} />
                 <PublishToggle id={design.id} published={design.published} />
-                <DeleteButton id={design.id} imagePath={design.image_path} title={design.title} />
+                <DeleteButton
+                  id={design.id}
+                  imagePath={design.image_path}
+                  thumbPath={design.thumb_path}
+                  title={design.title}
+                />
               </div>
             </div>
           </article>

@@ -10,8 +10,6 @@ import { NextResponse, type NextRequest } from 'next/server';
  * to anyone who requested it and only hide it visually.
  */
 export async function proxy(request: NextRequest) {
-  const response = NextResponse.next({ request });
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -21,19 +19,20 @@ export async function proxy(request: NextRequest) {
     if (request.nextUrl.pathname.startsWith('/admin')) {
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
-    return response;
+    return NextResponse.next({ request });
   }
+
+  const cookiesToSet: { name: string; value: string; options: Parameters<NextResponse['cookies']['set']>[2] }[] =
+    [];
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll: () => request.cookies.getAll(),
-      setAll: (cookiesToSet) => {
-        for (const { name, value } of cookiesToSet) {
+      setAll: (toSet) => {
+        for (const { name, value } of toSet) {
           request.cookies.set(name, value);
         }
-        for (const { name, value, options } of cookiesToSet) {
-          response.cookies.set(name, value, options);
-        }
+        cookiesToSet.push(...toSet);
       },
     },
   });
@@ -46,17 +45,28 @@ export async function proxy(request: NextRequest) {
   const isLoginRoute = pathname === '/admin/login';
   const isAdminRoute = pathname.startsWith('/admin');
 
+  const applyCookies = (res: NextResponse) => {
+    for (const { name, value, options } of cookiesToSet) res.cookies.set(name, value, options);
+    return res;
+  };
+
   if (isAdminRoute && !isLoginRoute && !user) {
     const redirectUrl = new URL('/admin/login', request.url);
     redirectUrl.searchParams.set('next', pathname);
-    return NextResponse.redirect(redirectUrl);
+    return applyCookies(NextResponse.redirect(redirectUrl));
   }
 
   if (isLoginRoute && user) {
-    return NextResponse.redirect(new URL('/admin', request.url));
+    return applyCookies(NextResponse.redirect(new URL('/admin', request.url)));
   }
 
-  return response;
+  // Verified once here — forward the result via a request header so the
+  // (protected) layout can trust it instead of paying for a second Supabase
+  // Auth round trip on every single admin navigation. The layout still
+  // falls back to a real check if this header is ever absent.
+  const headers = new Headers(request.headers);
+  if (user) headers.set('x-admin-email', user.email ?? '');
+  return applyCookies(NextResponse.next({ request: { headers } }));
 }
 
 export const proxyConfig = {

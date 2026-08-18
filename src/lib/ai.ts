@@ -8,6 +8,7 @@
  */
 import { google } from '@ai-sdk/google';
 import { generateObject } from 'ai';
+import sharp from 'sharp';
 import { z } from 'zod';
 
 // Fast and current as of this build (verified directly against the Gemini API's
@@ -31,6 +32,18 @@ export async function draftDesignFromImage(
   notes?: string,
   title?: string,
 ): Promise<DesignDraft> {
+  // This copy is only ever read by the model, never stored or served — the
+  // saved design keeps the full, uncompressed original untouched. Sending
+  // that original as-is here was the actual cause of "Draft with AI" being
+  // slow: a 35MB source measured at 47s round trip, almost entirely upload
+  // and vision-processing time on an image far larger than any model needs
+  // to read text and logos off a poster. 1600px is comfortably above what
+  // Gemini downsamples to internally anyway.
+  const forModel = await sharp(image)
+    .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 82 })
+    .toBuffer();
+
   const { object } = await generateObject({
     model: google(MODEL),
     schema: designDraftSchema,
@@ -52,7 +65,7 @@ export async function draftDesignFromImage(
               .filter(Boolean)
               .join(' '),
           },
-          { type: 'image', image },
+          { type: 'file', data: forModel, mediaType: 'image/jpeg' },
         ],
       },
     ],

@@ -177,10 +177,12 @@ export function PublishToggle({ id, published }: { id: string; published: boolea
 export function DeleteButton({
   id,
   imagePath,
+  thumbPath,
   title,
 }: {
   id: string;
   imagePath: string | null;
+  thumbPath?: string | null;
   title: string;
 }) {
   const router = useRouter();
@@ -193,7 +195,7 @@ export function DeleteButton({
       onClick={() => {
         if (!confirm(`Delete "${title}"? This can't be undone.`)) return;
         startTransition(async () => {
-          await deleteDesign(id, imagePath);
+          await deleteDesign(id, imagePath, thumbPath);
           router.refresh();
         });
       }}

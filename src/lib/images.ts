@@ -65,6 +65,23 @@ export async function processArtwork(
   };
 }
 
+/**
+ * Small preview derivative for admin management UI only — never what a
+ * visitor or the admin's own "real" gallery image resolves to. Full-size
+ * originals are deliberately never resized (see `processArtwork`), but
+ * downloading 10-35MB per card just to render a 400px-wide admin thumbnail
+ * grid was the main cause of that page loading slowly, so this exists as a
+ * separate, genuinely small, pre-generated file rather than relying on
+ * Next's on-request image optimizer — which was already shown to take 2+
+ * seconds (and sometimes fail outright) on sources this large.
+ */
+export async function processThumbnail(input: Buffer, { width = 480 } = {}): Promise<Buffer> {
+  return sharp(input)
+    .resize({ width, withoutEnlargement: true })
+    .webp({ quality: 70 })
+    .toBuffer();
+}
+
 /** Phosphor colour of the halftone dots. Background stays transparent. */
 const AMBER = [0xf0, 0xa0, 0x30] as const;
 const SCREEN_ANGLE = Math.PI / 4;

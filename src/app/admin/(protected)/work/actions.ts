@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { draftDesignFromImage, type DesignDraft } from '@/lib/ai';
-import { processArtwork } from '@/lib/images';
+import { processArtwork, processThumbnail } from '@/lib/images';
 import { authClient } from '@/lib/supabase/server';
 
 export type DraftState = { draft?: DesignDraft; error?: string };
@@ -62,16 +62,22 @@ export async function saveDesign(_prev: SaveState, formData: FormData): Promise<
 
   try {
     const bytes = Buffer.from(await file.arrayBuffer());
-    const processed = await processArtwork(bytes);
+    const [processed, thumb] = await Promise.all([processArtwork(bytes), processThumbnail(bytes)]);
 
     const baseSlug = slugify(title);
     const slug = await uniqueSlug(baseSlug);
     const path = `designs/${slug}.png`;
+    const thumbPath = `designs/${slug}-thumb.webp`;
 
     const { error: uploadError } = await supabase.storage
       .from('work')
       .upload(path, processed.data, { contentType: 'image/png', upsert: true });
     if (uploadError) throw uploadError;
+
+    const { error: thumbError } = await supabase.storage
+      .from('work')
+      .upload(thumbPath, thumb, { contentType: 'image/webp', upsert: true });
+    if (thumbError) throw thumbError;
 
     const { count } = await supabase
       .from('designs')
@@ -85,6 +91,7 @@ export async function saveDesign(_prev: SaveState, formData: FormData): Promise<
       year: year || String(new Date().getFullYear()),
       ratio: processed.ratio,
       image_path: path,
+      thumb_path: thumbPath,
       blur_data_url: processed.blurDataURL,
       alt: alt || `${title} — ${kind || 'design'} for ${context}`,
       published: publish,
@@ -121,30 +128,44 @@ export async function attachImage(id: string, formData: FormData): Promise<Attac
 
   const { data: row, error: fetchError } = await supabase
     .from('designs')
-    .select('slug, image_path')
+    .select('slug, image_path, thumb_path')
     .eq('id', id)
     .maybeSingle();
   if (fetchError || !row) return { error: 'Could not find that design.' };
 
   try {
     const bytes = Buffer.from(await file.arrayBuffer());
-    const processed = await processArtwork(bytes);
+    const [processed, thumb] = await Promise.all([processArtwork(bytes), processThumbnail(bytes)]);
     const path = `designs/${row.slug}.png`;
+    const thumbPath = `designs/${row.slug}-thumb.webp`;
 
     const { error: uploadError } = await supabase.storage
       .from('work')
       .upload(path, processed.data, { contentType: 'image/png', upsert: true });
     if (uploadError) throw uploadError;
 
+    const { error: thumbError } = await supabase.storage
+      .from('work')
+      .upload(thumbPath, thumb, { contentType: 'image/webp', upsert: true });
+    if (thumbError) throw thumbError;
+
     // Upsert-by-slug can leave a stale file behind if the old image had a
     // different extension (e.g. an old .webp from before the PNG switch).
     if (row.image_path && row.image_path !== path) {
       await supabase.storage.from('work').remove([row.image_path]).catch(() => {});
     }
+    if (row.thumb_path && row.thumb_path !== thumbPath) {
+      await supabase.storage.from('work').remove([row.thumb_path]).catch(() => {});
+    }
 
     const { error: updateError } = await supabase
       .from('designs')
-      .update({ image_path: path, blur_data_url: processed.blurDataURL, ratio: processed.ratio })
+      .update({
+        image_path: path,
+        thumb_path: thumbPath,
+        blur_data_url: processed.blurDataURL,
+        ratio: processed.ratio,
+      })
       .eq('id', id);
     if (updateError) throw updateError;
 
@@ -189,13 +210,14 @@ export async function togglePublish(id: string, next: boolean) {
   revalidatePath('/');
 }
 
-/** Removes the row and, best-effort, its stored image. */
-export async function deleteDesign(id: string, imagePath: string | null) {
+/** Removes the row and, best-effort, its stored image and thumbnail. */
+export async function deleteDesign(id: string, imagePath: string | null, thumbPath?: string | null) {
   const supabase = await authClient();
 
-  if (imagePath) {
+  const paths = [imagePath, thumbPath].filter((p): p is string => Boolean(p));
+  if (paths.length) {
     // Best-effort: a storage miss shouldn't block removing the row itself.
-    await supabase.storage.from('work').remove([imagePath]).catch(() => {});
+    await supabase.storage.from('work').remove(paths).catch(() => {});
   }
 
   const { error } = await supabase.from('designs').delete().eq('id', id);

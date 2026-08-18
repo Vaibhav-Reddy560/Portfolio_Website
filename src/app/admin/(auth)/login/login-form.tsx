@@ -24,7 +24,7 @@ export function LoginForm({ next }: { next: string }) {
       <input type="hidden" name="next" value={next} />
 
       <label className="block">
-        <span className="t-label crt-text text-phosphor">Email</span>
+        <span className="t-label crt-text relative z-10 text-phosphor/70">Email</span>
         <input
           type="email"
           name="email"
@@ -36,7 +36,7 @@ export function LoginForm({ next }: { next: string }) {
       </label>
 
       <label className="block">
-        <span className="t-label crt-text text-phosphor">Password</span>
+        <span className="t-label crt-text relative z-10 text-phosphor/70">Password</span>
         <input
           type="password"
           name="password"

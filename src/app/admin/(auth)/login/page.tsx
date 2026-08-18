@@ -32,7 +32,11 @@ export default async function LoginPage({
           </header>
 
           <div className="crt p-6">
-            <p className="t-data crt-text mb-5 text-[10px] uppercase tracking-[0.18em] text-phosphor/70">
+            {/* relative + z-index above .crt's scanline/bloom pseudo-elements
+                (::after is z-index:auto, ::before is z-index:1) keeps this on
+                the CRT screen but painted above the overlay rather than under
+                it — same fix already applied to the Sign In button below. */}
+            <p className="t-data crt-text relative z-10 mb-5 text-[10px] uppercase tracking-[0.18em] text-phosphor/70">
               Authorised access only
             </p>
             <LoginForm next={next ?? '/admin'} />
