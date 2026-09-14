@@ -46,6 +46,12 @@ export function BootSequence() {
     } catch {
       /* private mode — it simply replays next time */
     }
+    // Also set the attribute, not just the sessionStorage flag the inline
+    // script in layout.tsx reads on load. `html:not([data-booted])` paints the
+    // black CRT background that keeps the boot overlay from flashing — leaving
+    // it unset here meant the page stayed black behind the site for the rest
+    // of the session, and only came right after a reload.
+    document.documentElement.setAttribute('data-booted', '1');
     setTimeout(() => setActive(false), 420);
   }, []);
 
