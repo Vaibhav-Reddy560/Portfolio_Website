@@ -39,12 +39,13 @@ export function LoginForm({ next }: { next: string }) {
       return;
     }
     if (result.redirectTo) {
+      // Deliberately just the one navigation. A router.refresh() here used to
+      // follow the push, but it re-fetches the *current* route (/admin/login),
+      // which the proxy then redirects to /admin — an extra request, a
+      // redirect, and two more remote auth checks, since proxy.ts calls
+      // supabase.auth.getUser() on every /admin/* request. The push alone
+      // fetches the destination with the session cookie already set.
       router.push(result.redirectTo);
-      // The visitor may have already bounced off /admin once while signed
-      // out (redirected to this page); router.refresh() forces that route
-      // to re-render with the now-valid session instead of serving a
-      // stale client-cached "signed out" payload for it.
-      router.refresh();
     }
   };
 

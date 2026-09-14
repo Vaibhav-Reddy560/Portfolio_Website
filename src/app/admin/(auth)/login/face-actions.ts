@@ -1,8 +1,8 @@
 'use server';
 
 import { authClient, supabaseConfigured } from '@/lib/supabase/server';
-import { ADMIN_UID, adminClient } from '@/lib/supabase/admin';
-import { FACE_DESCRIPTOR_LENGTH, FACE_MATCH_THRESHOLD } from '@/lib/face/constants';
+import { adminClient, adminEmail } from '@/lib/supabase/admin';
+import { FACE_DESCRIPTOR_LENGTH, FACE_MATCH_AGREEMENT, FACE_MATCH_THRESHOLD } from '@/lib/face/constants';
 import type { LoginState } from './actions';
 
 const MAX_ATTEMPTS = 5;
@@ -23,23 +23,29 @@ function euclideanDistance(a: number[], b: number[]) {
 }
 
 /**
- * Closest distance between any captured frame and any enrolled view.
+ * Scores the captured frames against the enrolled model.
  *
- * Enrollment stores a separate descriptor per head position rather than one
- * averaged vector, so this is a nearest-neighbour search over the whole
- * model — the same thing face-api's FaceMatcher does. Taking the minimum is
- * what lets a face enrolled straight-on still match when signing in at a
- * slightly different angle.
+ * Each frame is matched independently against its own nearest enrolled view,
+ * and a majority of frames must agree before sign-in is allowed. The previous
+ * version returned the single smallest distance across every frame-and-view
+ * pair, which let a different person in: with 20 enrolled views and 3 captured
+ * frames that was 60 independent chances for one of them to fall under the
+ * threshold, and only one had to.
  */
-function closestDistance(captured: number[][], enrolled: number[][]) {
-  let best = Infinity;
-  for (const candidate of captured) {
-    for (const reference of enrolled) {
-      const distance = euclideanDistance(candidate, reference);
-      if (distance < best) best = distance;
-    }
-  }
-  return best;
+function scoreCapture(captured: number[][], enrolled: number[][]) {
+  const perFrame = captured.map((candidate) =>
+    Math.min(...enrolled.map((reference) => euclideanDistance(candidate, reference))),
+  );
+  const matching = perFrame.filter((distance) => distance <= FACE_MATCH_THRESHOLD).length;
+  const required = Math.max(1, Math.ceil(captured.length * FACE_MATCH_AGREEMENT));
+
+  return {
+    accepted: matching >= required,
+    matching,
+    required,
+    best: Math.min(...perFrame),
+    perFrame,
+  };
 }
 
 async function recordFailure(admin: ReturnType<typeof adminClient>, currentFailedCount: number) {
@@ -52,10 +58,10 @@ async function recordFailure(admin: ReturnType<typeof adminClient>, currentFaile
 }
 
 /**
- * Face ID sign-in. Never touches the password path — the stored descriptor
- * has no SELECT policy for anyone but this service-role client (see
- * supabase/migrations/0006_face_id.sql), and matching happens entirely here,
- * server-side, so the reference descriptor never reaches a browser.
+ * Face ID sign-in. Never touches the password path — face_descriptors has no
+ * policy for any client-facing role (migrations 0007/0008), so only this
+ * service-role client can read the enrolled views, and matching happens
+ * entirely here, server-side. They never reach a browser.
  *
  * Session issuance mirrors how signInWithPassword already works: both go
  * through authClient(), the same cookie-bound `@supabase/ssr` client, so the
@@ -82,42 +88,55 @@ export async function signInWithFace(
 
   const admin = adminClient();
 
-  const { data: attempts } = await admin
-    .from('face_login_attempts')
-    .select('failed_count, locked_until')
-    .eq('id', true)
-    .maybeSingle();
+  // Independent reads, and the email is memoised after the first sign-in on
+  // this instance — so this is one round trip rather than three serial ones.
+  const [{ data: attempts }, { data: enrolled }, email] = await Promise.all([
+    admin.from('face_login_attempts').select('failed_count, locked_until').eq('id', true).maybeSingle(),
+    admin.from('face_descriptors').select('descriptor'),
+    adminEmail(),
+  ]);
 
   if (attempts?.locked_until && new Date(attempts.locked_until) > new Date()) {
     return { error: 'Too many failed attempts. Use your password, or try Face ID again later.' };
   }
 
-  const { data: enrolled } = await admin.from('face_descriptors').select('descriptor');
-
   if (!enrolled || enrolled.length === 0) {
     return { error: 'Face ID isn’t set up yet. Sign in with your password.' };
   }
 
-  const distance = closestDistance(
+  const score = scoreCapture(
     captured,
     enrolled.map((row) => row.descriptor as number[]),
   );
 
-  if (distance > FACE_MATCH_THRESHOLD) {
+  // Server-side only: the actual numbers, so tuning is done from real
+  // attempts rather than guesswork. Deliberately not returned to the client —
+  // this endpoint is reachable before authentication, and handing back how
+  // close a face got is exactly what someone probing it would want.
+  console.info(
+    `[face-login] ${score.accepted ? 'accept' : 'reject'} ` +
+      `best=${score.best.toFixed(3)} threshold=${FACE_MATCH_THRESHOLD} ` +
+      `matched=${score.matching}/${captured.length} (need ${score.required}) ` +
+      `frames=[${score.perFrame.map((d) => d.toFixed(3)).join(', ')}] ` +
+      `views=${enrolled.length}`,
+  );
+
+  if (!score.accepted) {
     await recordFailure(admin, attempts?.failed_count ?? 0);
     return { error: 'Face not recognized.' };
   }
 
-  await admin.from('face_login_attempts').upsert({ id: true, failed_count: 0, locked_until: null });
-
-  const { data: userData, error: userError } = await admin.auth.admin.getUserById(ADMIN_UID);
-  if (userError || !userData.user?.email) {
+  if (!email) {
     return { error: 'Could not sign in with Face ID right now.' };
   }
 
+  // Not awaited: resetting the failure counter is bookkeeping, and making the
+  // sign-in wait on it just adds a round trip to the critical path.
+  void admin.from('face_login_attempts').upsert({ id: true, failed_count: 0, locked_until: null });
+
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: 'magiclink',
-    email: userData.user.email,
+    email,
   });
   if (linkError) {
     return { error: 'Could not sign in with Face ID right now.' };

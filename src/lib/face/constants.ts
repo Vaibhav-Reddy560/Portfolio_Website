@@ -2,41 +2,105 @@
 export const FACE_MODEL_URL = '/models';
 
 /**
- * Euclidean distance below which two 128-d face descriptors are considered
- * the same person. face-api.js's own docs describe 0.4-0.6 as the practical
- * match range; 0.5 sits in the middle rather than favoring false-accepts or
- * false-rejects.
+ * Self-hosted TensorFlow.js WASM binaries (see public/wasm). The version must
+ * stay in lockstep with the tfjs bundled inside @vladmandic/face-api — hence
+ * the exact pin on @tensorflow/tfjs-backend-wasm in package.json.
  */
-export const FACE_MATCH_THRESHOLD = 0.5;
+export const TFJS_WASM_URL = '/wasm/';
 
 /**
- * A blink is the eye aperture collapsing to this fraction of *that person's
- * own* open-eye baseline, which is measured live from the first frames.
+ * Euclidean distance below which two 128-d descriptors are the same person.
  *
- * A fixed absolute threshold does not survive contact with reality here:
- * face-api's 68-point eye landmarks are noisy, and the raw ratio shifts with
- * face shape, distance from the camera, and lighting — on some faces it never
- * dips below a hardcoded cutoff even with eyes fully shut. A relative drop is
- * stable across all of that, and a photo held up to the camera still can't
- * produce one, which is the whole point of the check.
+ * 0.5 let a different person in. face-api's 0.4-0.6 guidance assumes ONE
+ * reference descriptor; sign-in here compares several captured frames against
+ * every enrolled view, so the loosest usable single-reference number becomes
+ * far too generous once it's the minimum over dozens of comparisons.
+ *
+ * Measured against a real enrollment: the owner's own 20 views sat 0.090-0.453
+ * apart from each other (median 0.321), so a 0.5 cutoff had essentially no
+ * margin — a stranger only had to land nearer than the owner's own views do to
+ * each other. This sits below that spread while still leaving room for the
+ * owner, whose nearest enrolled view should be far closer than any of this.
+ */
+export const FACE_MATCH_THRESHOLD = 0.36;
+
+/**
+ * Fraction of captured frames that must independently match before sign-in is
+ * allowed. Taking the single best distance turned every extra frame and every
+ * extra enrolled view into another chance to get lucky; requiring agreement
+ * means one fluke frame can't carry the whole decision.
+ */
+export const FACE_MATCH_AGREEMENT = 0.6;
+
+/**
+ * Eye aperture below this fraction of the person's own open-eye baseline
+ * counts as closed — used only to avoid capturing a descriptor mid-blink,
+ * not as a liveness signal.
  */
 export const BLINK_DROP_RATIO = 0.8;
 
 /**
- * Detector input size while watching for a blink, versus at the moment of
- * capture. The detector dominates per-frame cost and scales with input area:
- * measured on a slow headless backend, 224 runs at ~10fps where the library
- * default of 416 managed ~1fps — far too slow to ever sample the ~120ms
- * window when an eye is actually shut. Capture happens once, so it can
- * afford the more accurate larger input.
+ * Passive liveness thresholds.
+ *
+ * Asking for a deliberate blink did not survive contact with a real face and
+ * a real webcam: face-api's eye landmarks are too coarse for the ~120ms
+ * window to register reliably, and a challenge the user can't satisfy is
+ * worse than no challenge. So liveness is now observed rather than demanded.
+ *
+ * Landmarks are first normalised for position, scale and rotation, which
+ * cancels rigid motion — so waving a printed photo around does not pass.
+ * What remains is *internal* geometry change: micro head rotation, eyes,
+ * brows, mouth. A real face produces that continuously and involuntarily; a
+ * photograph produces none of it.
+ *
+ * Both signals are checked and either one passing is enough, because the
+ * failure mode that matters here is a live person being locked out.
+ *
+ * The geometry threshold is tuned from measured separation rather than taste:
+ * a still photo and a waved/tilted/zoomed photo both land around 0.004
+ * (landmark noise only, since normalisation cancels rigid motion), while even
+ * very subtle living motion reaches ~0.028. Deliberately biased toward letting
+ * a real person in, because locking one out is the worse failure.
  */
-export const LIVENESS_INPUT_SIZE = 160;
-export const CAPTURE_INPUT_SIZE = 320;
+export const LIVENESS_GEOMETRY_RANGE = 0.014;
+export const LIVENESS_EAR_RANGE = 0.055;
+
+/** Rolling window of frames the liveness signals are measured across. */
+export const LIVENESS_WINDOW_FRAMES = 40;
+
+/** Frames required before liveness can be judged at all. */
+export const LIVENESS_MIN_FRAMES = 12;
 
 /**
- * Camera frames are drawn down to this size before detection. Measured at
- * ~20fps here versus ~15fps detecting against the raw 640x480 frame, which is
- * the difference between a blink spanning about 2.5 frames and about 1.7.
+ * The window is averaged into this many consecutive chunks before movement is
+ * measured, so frame-to-frame noise cancels but real motion doesn't. Without
+ * it, a grainy camera pointed at a photograph jitters enough to look alive.
+ */
+export const LIVENESS_CHUNKS = 4;
+
+/**
+ * Detector input size for the liveness loop, which only needs to track that a
+ * face is present and moving. Small and cheap, since it runs every frame.
+ */
+export const LIVENESS_INPUT_SIZE = 160;
+
+/**
+ * Detector input size at the moment of capture, run against the full-
+ * resolution camera frame rather than the downscaled loop canvas.
+ *
+ * Capturing from the small canvas made descriptors measurably worse: views of
+ * the same face in the same pose, seconds apart, landed 0.200 apart when they
+ * should be far closer. Blurry descriptors drift toward a generic face, which
+ * compresses the gap between people and is how a stranger got in. Capture runs
+ * only a handful of times, so the extra cost is worth paying for identity
+ * accuracy — which is the entire point of the feature.
+ */
+export const CAPTURE_INPUT_SIZE = 416;
+
+/**
+ * Camera frames are drawn down to this size before detection — measurably
+ * faster than detecting against the raw 640x480 frame, and the liveness
+ * signals are all ratios, so shrinking the frame doesn't affect them.
  */
 export const DETECT_WIDTH = 320;
 export const DETECT_HEIGHT = 240;
@@ -45,16 +109,11 @@ export const DETECT_HEIGHT = 240;
 export const EAR_BASELINE_DECAY = 0.995;
 
 /**
- * If no blink is caught within this long, offer a head-turn challenge
- * instead. Blink detection depends on the camera's frame rate and the
- * landmark model's precision, neither of which is guaranteed on an
- * arbitrary device — this keeps Face ID usable rather than stranding
- * someone at a prompt their hardware can't satisfy.
+ * How long to wait, from the first frame a face is actually seen, before
+ * softening the status into a hint. It's a hint and not a challenge — the
+ * check is passive, so there is nothing for the person to perform.
  */
-export const LIVENESS_FALLBACK_MS = 10_000;
-
-/** Yaw swing (nose offset / inter-ocular distance) accepted as a head turn. */
-export const YAW_TURN_DELTA = 0.18;
+export const LIVENESS_HINT_MS = 6_000;
 
 /**
  * Descriptors captured per head position during enrollment. Every sample is
@@ -68,8 +127,8 @@ export const ENROLL_SAMPLES_PER_POSE = 4;
 
 /**
  * Frames captured at sign-in, each compared against every stored view. Costs
- * about 120ms apiece once the nets are warm, and gives a bad frame (mid-
- * motion, half-blink) a couple of chances to be beaten by a good one.
+ * about 8ms apiece on WASM, and gives a bad frame (mid-motion, half-blink) a
+ * couple of chances to be beaten by a good one.
  */
 export const LOGIN_SAMPLE_COUNT = 3;
 

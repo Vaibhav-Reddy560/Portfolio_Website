@@ -2,19 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  CAPTURE_INPUT_SIZE,
   DETECT_HEIGHT,
   DETECT_WIDTH,
   ENROLL_SAMPLES_PER_POSE,
   FACE_MODEL_URL,
-  LIVENESS_FALLBACK_MS,
+  LIVENESS_HINT_MS,
+  CAPTURE_INPUT_SIZE,
   LIVENESS_INPUT_SIZE,
   LOGIN_SAMPLE_COUNT,
+  TFJS_WASM_URL,
   POSE_PITCH_DELTA,
   POSE_YAW_DELTA,
-  YAW_TURN_DELTA,
 } from '@/lib/face/constants';
-import { createBlinkDetector } from '@/lib/face/liveness';
+import { createLivenessDetector } from '@/lib/face/liveness';
 
 type FaceApiModule = typeof import('@vladmandic/face-api');
 type Point = { x: number; y: number };
@@ -35,27 +35,64 @@ function warmCanvas() {
   return canvas;
 }
 
+/**
+ * Selects the WASM backend before any model loads.
+ *
+ * These nets are small, and on WebGL the cost is dominated by compiling a GPU
+ * shader for every op — measured at ~21s on an Apple M2 (7.7s detector, 4.4s
+ * landmarks, 8.3s descriptor), which was essentially the whole of the 20-25s
+ * sign-in. WASM has no shader compilation at all: the same measurement is
+ * ~390ms end to end, and it is also about twice as fast per frame, because
+ * WebGL's per-op dispatch overhead outweighs the GPU for work this size.
+ *
+ * Threaded WASM would need cross-origin isolation (COOP/COEP), which this app
+ * doesn't set, so this runs single-threaded SIMD — which is what those numbers
+ * were measured under.
+ *
+ * Falls back to leaving the default backend in place if anything here fails,
+ * so a missing binary means "slow, like before" rather than "sign-in broken".
+ */
+async function selectBackend(faceapi: FaceApiModule) {
+  // face-api's bundled tfjs type definitions re-export only a curated subset
+  // of tfjs-core, so these three are absent from the types despite existing on
+  // the runtime bundle (confirmed by calling them against it). Narrow shape
+  // rather than `any`, so a genuine signature change still fails the build.
+  const tf = faceapi.tf as unknown as {
+    setWasmPaths: (path: string) => void;
+    setBackend: (name: string) => Promise<boolean>;
+    ready: () => Promise<void>;
+    getBackend: () => string;
+  };
+
+  try {
+    tf.setWasmPaths(TFJS_WASM_URL);
+    await tf.setBackend('wasm');
+    await tf.ready();
+  } catch {
+    await tf.ready();
+  }
+}
+
 function ensureWeights(faceapi: FaceApiModule) {
-  weightsPromise ??= Promise.all([
-    faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODEL_URL),
-    faceapi.nets.faceLandmark68Net.loadFromUri(FACE_MODEL_URL),
-    faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODEL_URL),
-  ]).then(() => undefined);
+  weightsPromise ??= (async () => {
+    await selectBackend(faceapi);
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(FACE_MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODEL_URL),
+    ]);
+  })();
   return weightsPromise;
 }
 
 /**
- * Compiles the WebGL shaders for the two nets the blink loop needs.
- *
- * Downloading the weights is the cheap part (~120ms); the first inference on
- * each net is what costs — measured at ~6.6s for the detector. Left unwarmed,
- * the user stares at "blink once" through a multi-second stall in which no
- * frame is sampled, so every blink during it is invisible. That was the whole
- * reason Face ID felt broken even once it worked.
+ * Runs each net once so the first real frame isn't the one paying for
+ * initialisation. Cheap on WASM (~150ms); it mattered enormously on WebGL,
+ * where it was seconds of shader compilation.
  *
  * The nets are invoked directly rather than via detectSingleFace's chained
  * form: a blank canvas contains no face, so the chained landmark stage would
- * be skipped and its shaders never compiled.
+ * be skipped and never initialised.
  */
 function ensureLoopReady(faceapi: FaceApiModule) {
   loopWarmPromise ??= (async () => {
@@ -71,9 +108,9 @@ function ensureLoopReady(faceapi: FaceApiModule) {
 }
 
 /**
- * The descriptor net is the most expensive to compile (~8s) but isn't needed
- * until the moment of capture, so it warms in the background while the user
- * is still being asked to blink, rather than holding up the prompt.
+ * The descriptor net isn't needed until the moment of capture, so it
+ * initialises in the background while the liveness check is still running
+ * rather than holding up the camera.
  */
 function ensureDescriptorReady(faceapi: FaceApiModule) {
   descriptorWarmPromise ??= (async () => {
@@ -84,11 +121,10 @@ function ensureDescriptorReady(faceapi: FaceApiModule) {
 }
 
 /**
- * Starts the download and shader compilation early, without opening a camera.
- * Call it when the user shows intent (hovering or focusing the Face ID
- * button) so the several seconds of one-time GPU work are already underway —
- * or finished — by the time they actually click. Safe to call repeatedly;
- * every stage is memoised.
+ * Starts the model download and initialisation early, without opening a
+ * camera. Call it when the user shows intent (hovering or focusing the Face
+ * ID button) so it's already done by the time they click. Safe to call
+ * repeatedly; every stage is memoised.
  */
 export function prewarmFaceRecognition() {
   void (async () => {
@@ -171,15 +207,15 @@ type FaceCameraProps = {
 /**
  * Shared camera + descriptor-capture UI for Face ID enrollment and login.
  *
- * Login requires proof of life first — a blink, or a head turn if no blink
- * registers in time — so a photo held up to the camera can't sign in.
- * Enrollment skips that: reaching it already required an authenticated admin
- * session, so a liveness check there is friction that buys nothing.
+ * Login checks for proof of life first, passively — nothing is demanded of
+ * the person, it just watches for the involuntary movement a real face always
+ * has (see lib/face/liveness.ts). Enrollment skips the check entirely:
+ * reaching it already required an authenticated admin session, so liveness
+ * there is friction that buys nothing.
  *
- * The detection loop deliberately runs *landmarks only*. The descriptor net
- * is the expensive one (6.4MB), and running it every frame drops the loop to
- * ~2-3fps — far too slow to ever observe a ~120ms blink. It now runs exactly
- * once, at the moment of capture.
+ * The detection loop deliberately runs *landmarks only*. Running the
+ * descriptor net every frame instead would drop the loop to a few frames per
+ * second; it now runs only at the moment of capture.
  *
  * face-api and its models load only when this component mounts, behind a
  * dynamic import, so they never reach the login page's initial bundle.
@@ -261,18 +297,22 @@ export function FaceCamera({ mode, onCapture, onCancel }: FaceCameraProps) {
       if (isStale()) return;
 
       // Only needed at capture, so it compiles in the background rather than
-      // holding up the blink prompt.
+      // holding up the liveness check.
       void ensureDescriptorReady(faceapi).catch(() => undefined);
 
       setStatus('Position your face in frame');
 
+      // Cheap options for the every-frame liveness loop; accurate ones for the
+      // handful of capture frames, which run against the full-resolution video
+      // rather than the downscaled canvas. Enrollment and sign-in both use the
+      // capture path, so descriptors stay directly comparable.
       const livenessOptions = new faceapi.TinyFaceDetectorOptions({
         inputSize: LIVENESS_INPUT_SIZE,
         scoreThreshold: 0.4,
       });
       const captureOptions = new faceapi.TinyFaceDetectorOptions({
         inputSize: CAPTURE_INPUT_SIZE,
-        scoreThreshold: 0.4,
+        scoreThreshold: 0.5,
       });
 
       // Detection runs against a downscaled copy of the frame rather than the
@@ -290,12 +330,10 @@ export function FaceCamera({ mode, onCapture, onCancel }: FaceCameraProps) {
       };
 
       let live = mode !== 'login';
-      const blinkDetector = createBlinkDetector();
-      let yawMin = Infinity;
-      let yawMax = -Infinity;
+      const livenessDetector = createLivenessDetector();
       const collected: { descriptor: number[]; pose: string }[] = [];
       let lastSampleAt = 0;
-      const livenessStartedAt = Date.now();
+      let firstFaceAt: number | null = null;
 
       // Enrollment walk-through state.
       let poseIndex = 0;
@@ -330,31 +368,26 @@ export function FaceCamera({ mode, onCapture, onCancel }: FaceCameraProps) {
           return;
         }
 
+        const positions = detection.landmarks.positions;
         const ear =
           (eyeAspectRatio(detection.landmarks.getLeftEye()) +
             eyeAspectRatio(detection.landmarks.getRightEye())) /
           2;
-        const { eyesOpen, blinked } = blinkDetector.observe(ear);
+        const { live: detectedLive, eyesOpen } = livenessDetector.observe(positions, ear);
+        if (detectedLive) live = true;
 
         if (!live) {
-          if (blinked) {
-            live = true;
-          } else if (Date.now() - livenessStartedAt > LIVENESS_FALLBACK_MS) {
-            const yaw = yawProxy(detection.landmarks.positions);
-            yawMin = Math.min(yawMin, yaw);
-            yawMax = Math.max(yawMax, yaw);
-            if (yawMax - yawMin > YAW_TURN_DELTA) {
-              live = true;
-            } else {
-              setStatus('Turn your head slowly left, then back');
-              schedule();
-              return;
-            }
-          } else {
-            setStatus('Blink once to continue');
-            schedule();
-            return;
-          }
+          // The clock starts at the first frame a face is actually seen, not
+          // when the camera opened — otherwise the hint fires while the person
+          // is still getting into frame, which reads as nonsense.
+          firstFaceAt ??= Date.now();
+          setStatus(
+            Date.now() - firstFaceAt > LIVENESS_HINT_MS
+              ? 'Still checking — try moving a little closer'
+              : 'Checking…',
+          );
+          schedule();
+          return;
         }
 
         // Never sample a blinking frame — a half-closed eye shifts the
@@ -414,8 +447,6 @@ export function FaceCamera({ mode, onCapture, onCancel }: FaceCameraProps) {
           return;
         }
 
-        // Normally already finished during the blink prompt; awaiting it keeps
-        // capture off a cold descriptor net, which costs seconds.
         await ensureDescriptorReady(faceapi);
         if (isStale() || !videoRef.current) return;
 
