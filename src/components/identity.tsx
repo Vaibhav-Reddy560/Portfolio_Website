@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { profile as staticProfile, tools } from '@/content/profile';
 import { Led, Radar, SerialPlate } from './hardware';
 import { Globe, Starburst, Waveform } from './y2k';
@@ -70,6 +71,9 @@ export function Identity({ data = staticProfile }: { data?: ProfileData } = {}) 
           </a>
         </div>
         <div className="ml-auto flex items-center gap-3">
+          <Link href="/admin" className="t-data text-[10px] uppercase tracking-[0.14em] text-navy/50 transition-colors hover:text-navy">
+            Operator ↗
+          </Link>
           <SerialPlate id="VR-2026-00" className="hidden sm:inline-flex" />
           <Led tone="rust" />
           <LiveClock />

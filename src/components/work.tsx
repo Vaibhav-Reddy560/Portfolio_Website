@@ -85,7 +85,7 @@ export function Work({
             {builds.map((project) => (
               <li key={project.slug}>
                 <a
-                  href={project.href ?? '#easy-club'}
+                  href={project.href ?? `#${project.slug}`}
                   target={project.href ? '_blank' : undefined}
                   rel={project.href ? 'noreferrer' : undefined}
                   className="panel-inset group flex h-full flex-col gap-2 p-4 transition-colors hover:bg-amber"
