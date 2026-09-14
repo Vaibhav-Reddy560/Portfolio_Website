@@ -2,11 +2,19 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
-import { FaceCamera } from '@/components/face-camera';
+import { FaceCamera, prewarmFaceRecognition, type FaceSample } from '@/components/face-camera';
 import { isCameraSupported } from '@/lib/face/support';
 import { enrollFace, removeFace } from './actions';
 
-export function FaceEnrollment({ enrolled, enrolledAt }: { enrolled: boolean; enrolledAt: string | null }) {
+export function FaceEnrollment({
+  enrolled,
+  enrolledAt,
+  viewCount,
+}: {
+  enrolled: boolean;
+  enrolledAt: string | null;
+  viewCount: number;
+}) {
   const router = useRouter();
   const [capturing, setCapturing] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -17,10 +25,10 @@ export function FaceEnrollment({ enrolled, enrolledAt }: { enrolled: boolean; en
   const [cameraSupported, setCameraSupported] = useState<boolean | null>(null);
   useEffect(() => setCameraSupported(isCameraSupported()), []);
 
-  const onCapture = (descriptor: number[]) => {
+  const onCapture = (samples: FaceSample[]) => {
     setCapturing(false);
     startTransition(async () => {
-      const result = await enrollFace(descriptor);
+      const result = await enrollFace(samples);
       if (result.error) {
         setError(result.error);
         return;
@@ -58,7 +66,8 @@ export function FaceEnrollment({ enrolled, enrolledAt }: { enrolled: boolean; en
         <p className="t-head mt-1 text-lg uppercase">{enrolled ? 'Enabled' : 'Not set up'}</p>
         {enrolled && enrolledAt ? (
           <p className="t-data mt-1 text-[11px] text-navy/50">
-            Enrolled {new Date(enrolledAt).toLocaleString()}
+            {viewCount} view{viewCount === 1 ? '' : 's'} · scanned{' '}
+            {new Date(enrolledAt).toLocaleString()}
           </p>
         ) : null}
       </div>
@@ -72,10 +81,12 @@ export function FaceEnrollment({ enrolled, enrolledAt }: { enrolled: boolean; en
           <button
             type="button"
             disabled={pending}
+            onPointerEnter={prewarmFaceRecognition}
+            onFocus={prewarmFaceRecognition}
             onClick={() => setCapturing(true)}
             className="btn py-1.5 text-[11px]"
           >
-            {enrolled ? 'Re-enroll Face ID' : 'Set up Face ID'}
+            {enrolled ? 'Re-scan my face' : 'Set up Face ID'}
           </button>
           {enrolled && !confirmingRemove ? (
             <button

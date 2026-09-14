@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
-import { FaceCamera } from '@/components/face-camera';
+import { FaceCamera, prewarmFaceRecognition, type FaceSample } from '@/components/face-camera';
 import { isCameraSupported } from '@/lib/face/support';
 import { signIn } from './actions';
 import { signInWithFace } from './face-actions';
@@ -58,11 +58,11 @@ export function LoginForm({ next }: { next: string }) {
     });
   };
 
-  const onFaceCapture = (descriptor: number[]) => {
+  const onFaceCapture = (samples: FaceSample[]) => {
     setFaceMode(false);
     setError(null);
     startTransition(async () => {
-      onResult(await signInWithFace(descriptor, next));
+      onResult(await signInWithFace(samples.map((sample) => sample.descriptor), next));
     });
   };
 
@@ -130,6 +130,11 @@ export function LoginForm({ next }: { next: string }) {
         <button
           type="button"
           disabled={pending}
+          // Hovering or tabbing to the button is enough intent to start the
+          // one-time model load and shader compilation, so the camera is
+          // usually ready the instant it opens.
+          onPointerEnter={prewarmFaceRecognition}
+          onFocus={prewarmFaceRecognition}
           onClick={() => {
             setError(null);
             setFaceMode(true);

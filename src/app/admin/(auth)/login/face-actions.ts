@@ -22,6 +22,26 @@ function euclideanDistance(a: number[], b: number[]) {
   return Math.sqrt(sum);
 }
 
+/**
+ * Closest distance between any captured frame and any enrolled view.
+ *
+ * Enrollment stores a separate descriptor per head position rather than one
+ * averaged vector, so this is a nearest-neighbour search over the whole
+ * model — the same thing face-api's FaceMatcher does. Taking the minimum is
+ * what lets a face enrolled straight-on still match when signing in at a
+ * slightly different angle.
+ */
+function closestDistance(captured: number[][], enrolled: number[][]) {
+  let best = Infinity;
+  for (const candidate of captured) {
+    for (const reference of enrolled) {
+      const distance = euclideanDistance(candidate, reference);
+      if (distance < best) best = distance;
+    }
+  }
+  return best;
+}
+
 async function recordFailure(admin: ReturnType<typeof adminClient>, currentFailedCount: number) {
   const failedCount = currentFailedCount + 1;
   const lockedUntil =
@@ -44,13 +64,21 @@ async function recordFailure(admin: ReturnType<typeof adminClient>, currentFaile
  * pattern for establishing a session from a non-password verification —
  * confirmed against @supabase/auth-js's own type definitions.
  */
-export async function signInWithFace(descriptor: unknown, next: string = '/admin'): Promise<LoginState> {
+export async function signInWithFace(
+  descriptors: unknown,
+  next: string = '/admin',
+): Promise<LoginState> {
   if (!supabaseConfigured) {
     return { error: 'Supabase is not configured on this deployment.' };
   }
-  if (!isValidDescriptor(descriptor)) {
+  if (
+    !Array.isArray(descriptors) ||
+    descriptors.length === 0 ||
+    !descriptors.every(isValidDescriptor)
+  ) {
     return { error: 'Invalid face data captured — please try again.' };
   }
+  const captured = descriptors as number[][];
 
   const admin = adminClient();
 
@@ -64,18 +92,16 @@ export async function signInWithFace(descriptor: unknown, next: string = '/admin
     return { error: 'Too many failed attempts. Use your password, or try Face ID again later.' };
   }
 
-  const { data: credential } = await admin
-    .from('face_credentials')
-    .select('descriptor')
-    .eq('id', true)
-    .maybeSingle();
+  const { data: enrolled } = await admin.from('face_descriptors').select('descriptor');
 
-  if (!credential) {
+  if (!enrolled || enrolled.length === 0) {
     return { error: 'Face ID isn’t set up yet. Sign in with your password.' };
   }
 
-  const stored = credential.descriptor as number[];
-  const distance = euclideanDistance(descriptor, stored);
+  const distance = closestDistance(
+    captured,
+    enrolled.map((row) => row.descriptor as number[]),
+  );
 
   if (distance > FACE_MATCH_THRESHOLD) {
     await recordFailure(admin, attempts?.failed_count ?? 0);

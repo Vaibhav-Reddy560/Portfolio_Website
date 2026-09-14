@@ -30,8 +30,16 @@ export const BLINK_DROP_RATIO = 0.8;
  * window when an eye is actually shut. Capture happens once, so it can
  * afford the more accurate larger input.
  */
-export const LIVENESS_INPUT_SIZE = 224;
+export const LIVENESS_INPUT_SIZE = 160;
 export const CAPTURE_INPUT_SIZE = 320;
+
+/**
+ * Camera frames are drawn down to this size before detection. Measured at
+ * ~20fps here versus ~15fps detecting against the raw 640x480 frame, which is
+ * the difference between a blink spanning about 2.5 frames and about 1.7.
+ */
+export const DETECT_WIDTH = 320;
+export const DETECT_HEIGHT = 240;
 
 /** How fast the open-eye baseline decays per frame, so it tracks movement. */
 export const EAR_BASELINE_DECAY = 0.995;
@@ -48,7 +56,25 @@ export const LIVENESS_FALLBACK_MS = 10_000;
 /** Yaw swing (nose offset / inter-ocular distance) accepted as a head turn. */
 export const YAW_TURN_DELTA = 0.18;
 
-/** Samples averaged together at enrollment time, to smooth out one bad frame. */
-export const ENROLL_SAMPLE_COUNT = 3;
+/**
+ * Descriptors captured per head position during enrollment. Every sample is
+ * stored in its own row rather than averaged — averaging near-identical
+ * frames adds nothing, and averaging genuinely different poses produces a
+ * vector that matches neither. Sign-in keeps the closest match across all of
+ * them, so more views means a wider range of angles and lighting that still
+ * recognises you.
+ */
+export const ENROLL_SAMPLES_PER_POSE = 4;
+
+/**
+ * Frames captured at sign-in, each compared against every stored view. Costs
+ * about 120ms apiece once the nets are warm, and gives a bad frame (mid-
+ * motion, half-blink) a couple of chances to be beaten by a good one.
+ */
+export const LOGIN_SAMPLE_COUNT = 3;
+
+/** How far the head must move from its calibrated centre to satisfy a pose. */
+export const POSE_YAW_DELTA = 0.09;
+export const POSE_PITCH_DELTA = 0.05;
 
 export const FACE_DESCRIPTOR_LENGTH = 128;
