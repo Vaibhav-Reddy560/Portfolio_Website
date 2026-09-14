@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-/** Must stay in sync with the <Win> ids in app/page.tsx. */
-const MODULES = [
+/** Default set, matching app/page.tsx's fixed sections — page.tsx passes the
+ *  live list (fixed sections + however many featured case studies exist
+ *  today) explicitly, so this only applies if a caller renders `Diagnostics`
+ *  standalone. */
+const DEFAULT_MODULES = [
   ['identity', 'IDENTITY'],
   ['work', 'SELECTED WORK'],
   ['easy-club', 'EASY CLUB'],
@@ -20,7 +23,11 @@ const MODULES = [
  * decorative fiction. Draggable on desktop, collapsed by default on small
  * screens where it would otherwise cover content.
  */
-export function Diagnostics() {
+export function Diagnostics({
+  modules = DEFAULT_MODULES,
+}: {
+  modules?: readonly (readonly [string, string])[];
+}) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [module, setModule] = useState('IDENTITY');
@@ -63,7 +70,7 @@ export function Diagnostics() {
       let best = '';
       let bestTop = Number.NEGATIVE_INFINITY;
       const line = window.innerHeight * 0.4;
-      for (const [id, label] of MODULES) {
+      for (const [id, label] of modules) {
         const node = document.getElementById(id);
         if (!node) continue;
         const { top } = node.getBoundingClientRect();
@@ -96,7 +103,7 @@ export function Diagnostics() {
       window.removeEventListener('resize', onResize);
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [mounted]);
+  }, [mounted, modules]);
 
   // Oscilloscope
   useEffect(() => {

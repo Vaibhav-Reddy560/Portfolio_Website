@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { draftDesignFromImage, type DesignDraft } from '@/lib/ai';
 import { processArtwork, processThumbnail } from '@/lib/images';
+import { slugify } from '@/lib/slug';
 import { authClient } from '@/lib/supabase/server';
 
 export type DraftState = { draft?: DesignDraft; error?: string };
@@ -223,16 +224,6 @@ export async function deleteDesign(id: string, imagePath: string | null, thumbPa
   const { error } = await supabase.from('designs').delete().eq('id', id);
   if (error) throw error;
   revalidatePath('/');
-}
-
-function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60);
 }
 
 /** Appends -2, -3, … until the slug is free, so titles can repeat safely. */

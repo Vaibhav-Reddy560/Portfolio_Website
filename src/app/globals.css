@@ -53,6 +53,28 @@
     background-color: var(--color-blueprint);
   }
 
+  /*
+   * Boot overlay: a blocking inline script in layout.tsx (matching the JSON-LD
+   * <script> already there — see that file) sets `data-booted` on <html>
+   * synchronously, before first paint, when sessionStorage already has
+   * `boot-done` or the visitor prefers reduced motion. Without this, the
+   * overlay — which BootSequence now renders by default so the very first
+   * SSR frame has no flash of bare site content — would itself flash on
+   * every later page load for a visitor who's already seen it once.
+   */
+  html:not([data-booted]) {
+    background-color: var(--color-crt);
+  }
+
+  /* !important: this is @layer base, and the overlay also carries Tailwind's
+     `flex` utility (@layer utilities) — utilities win over base regardless of
+     selector specificity under cascade layers, for any *non*-important
+     declaration. !important inverts that, the same reason the reduced-motion
+     block below also needs it against animation utility classes. */
+  html[data-booted] .boot-overlay {
+    display: none !important;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     html {
       scroll-behavior: auto;

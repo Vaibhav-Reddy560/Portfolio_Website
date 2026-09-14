@@ -112,55 +112,108 @@ export const getBuilds = unstable_cache(
 );
 
 /**
- * Full case study, merged with its `detail` JSON.
- *
- * Typed per project rather than by a shared slug parameter: the two studies have
- * genuinely different shapes (pillars vs modules/providers/engineering), and a
- * union return type would force every consumer to narrow it at the call site.
+ * A project's variable case-study payload. Genuinely different per project —
+ * Easy Club ships `pillars`, Opacitys ships `modules`/`providers`/`engineering`,
+ * a project drafted through the admin can ship any mix of all four — so every
+ * key is optional and `CaseStudy` (src/components/case-study.tsx) normalises
+ * whichever shapes are actually present rather than assuming one layout.
  */
-async function loadCaseStudy<T extends object>(slug: string, fallback: T): Promise<T & { image?: string }> {
-  if (!supabaseConfigured) return fallback;
-  try {
-    const { data, error } = await readClient()
-      .from('projects')
-      .select('*')
-      .eq('slug', slug)
-      .eq('published', true)
-      .maybeSingle();
-    if (error || !data) return fallback;
+export type ProjectDetail = {
+  pillars?: unknown[];
+  modules?: unknown[];
+  providers?: unknown;
+  engineering?: unknown;
+};
 
-    const detail = (data.detail ?? {}) as Partial<T>;
-    return {
-      ...fallback,
-      name: data.name,
-      href: data.href ?? undefined,
-      hrefLabel: data.href_label ?? undefined,
-      year: data.year ?? undefined,
-      tagline: data.tagline ?? undefined,
-      thesis: data.thesis ?? undefined,
-      stack: data.stack?.length ? data.stack : undefined,
-      note: data.note ?? undefined,
-      image: imageUrl(data.image_path),
-      // Drop keys the row left null so the static fallback value survives.
-      ...Object.fromEntries(
-        Object.entries(detail).filter(([, v]) => v !== null && v !== undefined),
-      ),
-    } as T & { image?: string };
-  } catch (error) {
-    console.error(`[content] case study ${slug} failed, using fallback:`, error);
-    return fallback;
-  }
-}
+export type CaseStudyProject = {
+  slug: string;
+  name: string;
+  tagline?: string;
+  year?: string;
+  href?: string;
+  hrefLabel?: string;
+  thesis?: string;
+  stack: string[];
+  note?: string;
+  image?: string;
+  blurDataURL?: string;
+  alt?: string;
+  detail: ProjectDetail;
+};
 
-export const getEasyClub = unstable_cache(
-  () => loadCaseStudy('easy-club', staticEasyClub),
-  ['case-study-easy-club'],
-  { tags: [CONTENT_TAG], revalidate: 5 },
-);
+/** Static fallback, reshaped to the same generic structure the DB loader returns. */
+const STATIC_CASE_STUDIES: CaseStudyProject[] = [
+  {
+    slug: 'easy-club',
+    name: staticEasyClub.name,
+    tagline: staticEasyClub.tagline,
+    year: staticEasyClub.year,
+    href: staticEasyClub.href,
+    hrefLabel: staticEasyClub.hrefLabel,
+    thesis: staticEasyClub.thesis,
+    stack: [...staticEasyClub.stack],
+    note: staticEasyClub.note,
+    image: '/work/easy-club/product.png',
+    detail: { pillars: staticEasyClub.pillars },
+  },
+  {
+    slug: 'opacitys',
+    name: staticOpacitys.name,
+    tagline: staticOpacitys.tagline,
+    year: staticOpacitys.year,
+    href: staticOpacitys.href,
+    hrefLabel: staticOpacitys.hrefLabel,
+    thesis: staticOpacitys.thesis,
+    stack: [...staticOpacitys.stack],
+    note: staticOpacitys.note,
+    image: '/work/opacitys/product.png',
+    detail: {
+      modules: staticOpacitys.modules,
+      providers: staticOpacitys.providers,
+      engineering: staticOpacitys.engineering,
+    },
+  },
+];
 
-export const getOpacitys = unstable_cache(
-  () => loadCaseStudy('opacitys', staticOpacitys),
-  ['case-study-opacitys'],
+/**
+ * Every featured, published project with its full case-study payload — not
+ * just the two originals. `featured` gates which projects get an expanded
+ * section on the homepage (as opposed to just the compact grid from
+ * `getBuilds`); everything else about a row (image, stack, detail) comes
+ * through untouched, so a project published with an image and a full
+ * `detail` object surfaces immediately, no code change required.
+ */
+export const getCaseStudies = unstable_cache(
+  async (): Promise<CaseStudyProject[]> =>
+    withFallback<CaseStudyProject>(
+      'case-studies',
+      async () => {
+        const { data, error } = await readClient()
+          .from('projects')
+          .select('*')
+          .eq('published', true)
+          .eq('featured', true)
+          .order('sort_order', { ascending: true });
+        if (error) throw error;
+        return (data ?? []).map((row) => ({
+          slug: row.slug,
+          name: row.name,
+          tagline: row.tagline ?? undefined,
+          year: row.year ?? undefined,
+          href: row.href ?? undefined,
+          hrefLabel: row.href_label ?? undefined,
+          thesis: row.thesis ?? undefined,
+          stack: row.stack ?? [],
+          note: row.note ?? undefined,
+          image: imageUrl(row.image_path),
+          blurDataURL: row.blur_data_url ?? undefined,
+          alt: row.alt ?? undefined,
+          detail: (row.detail ?? {}) as ProjectDetail,
+        }));
+      },
+      STATIC_CASE_STUDIES,
+    ),
+  ['case-studies'],
   { tags: [CONTENT_TAG], revalidate: 5 },
 );
 

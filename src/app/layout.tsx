@@ -63,6 +63,23 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       className={`${octavus.variable} ${rare.variable} ${jura.variable} h-full`}
     >
       <body className="min-h-full">
+        {/*
+          Blocking (no async/defer) and first in body, so it runs and finishes
+          before the browser paints anything after it — including the boot
+          overlay BootSequence renders by default. Sets `data-booted` when
+          this visitor's session has already played the sequence (or prefers
+          reduced motion), so globals.css can hide the overlay before first
+          paint instead of it flashing on every later page load. Absent JS
+          entirely, the <noscript> stylesheet right below hides it for good.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(sessionStorage.getItem('boot-done')==='1'||window.matchMedia('(prefers-reduced-motion: reduce)').matches){document.documentElement.setAttribute('data-booted','1')}}catch(e){}`,
+          }}
+        />
+        <noscript>
+          <style>{'.boot-overlay{display:none!important}'}</style>
+        </noscript>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personSchema) }}

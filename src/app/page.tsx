@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react';
 import { BootSequence } from '@/components/boot-sequence';
-import { EasyClub, Opacitys } from '@/components/case-studies';
+import { CaseStudy } from '@/components/case-study';
 import { Diagnostics } from '@/components/diagnostics';
 import { Identity } from '@/components/identity';
 import {
@@ -16,11 +17,10 @@ import { Ornament } from '@/components/y2k';
 import {
   getAdditionalRoles,
   getBuilds,
-  getEasyClub,
+  getCaseStudies,
   getDesigns,
   getEducation,
   getExperience,
-  getOpacitys,
   getProfile,
   getSkillGroups,
 } from '@/lib/content';
@@ -36,6 +36,8 @@ function Divider() {
   );
 }
 
+type Section = { id: string; title: string; node: ReactNode };
+
 export default async function Home() {
   // All loaders are cached and tagged, so the page still prerenders. Fetched in
   // parallel because none of them depend on each other.
@@ -43,8 +45,7 @@ export default async function Home() {
     profile,
     designs,
     builds,
-    easyClub,
-    opacitys,
+    caseStudies,
     roles,
     additionalRoles,
     skillGroups,
@@ -53,13 +54,47 @@ export default async function Home() {
     getProfile(),
     getDesigns(),
     getBuilds(),
-    getEasyClub(),
-    getOpacitys(),
+    getCaseStudies(),
     getExperience(),
     getAdditionalRoles(),
     getSkillGroups(),
     getEducation(),
   ]);
+
+  // Case studies are however many featured projects exist today, not a fixed
+  // pair — everything downstream (window indices, the diagnostics scroll-spy
+  // module list) is derived from this, so publishing a new featured project
+  // never needs a code change here.
+  const lead: Section[] = [
+    { id: 'identity', title: 'Identity', node: <Identity data={profile} /> },
+    { id: 'work', title: 'Selected Work', node: <Work designs={designs} builds={builds} /> },
+  ];
+  const studies: Section[] = caseStudies.map((cs) => ({
+    id: cs.slug,
+    title: cs.name,
+    node: <CaseStudy data={cs} />,
+  }));
+  const resume: Section[] = [
+    { id: 'personnel', title: 'Personnel File', node: <PersonnelFile data={profile} /> },
+    { id: 'service', title: 'Experience', node: <ServiceRecord roles={roles} /> },
+    { id: 'capabilities', title: 'Skills', node: <Capabilities groups={skillGroups} /> },
+    {
+      id: 'education',
+      title: 'Education & Beyond',
+      node: <EducationBeyond entries={education} roles={additionalRoles} data={profile} />,
+    },
+  ];
+  const contact: Section[] = [
+    { id: 'transmit', title: 'Contact', node: <Transmit data={profile} /> },
+  ];
+
+  const ordered = [...lead, ...studies, ...resume, ...contact];
+  const diagnosticsModules = ordered.map(
+    (s) => [s.id, s.title.toUpperCase()] as const,
+  );
+
+  let cursor = 0;
+  const nextIndex = () => String(cursor++).padStart(2, '0');
 
   return (
     <>
@@ -74,53 +109,41 @@ export default async function Home() {
         </a>
 
         <main className="shell space-y-6 py-6 pb-24 sm:space-y-8 sm:py-10">
-          <Win id="identity" index="00" title="Identity">
-            <Identity data={profile} />
-          </Win>
-
-          <Win id="work" index="01" title="Selected Work">
-            <Work designs={designs} builds={builds} />
-          </Win>
+          {lead.map((s) => (
+            <Win key={s.id} id={s.id} index={nextIndex()} title={s.title}>
+              {s.node}
+            </Win>
+          ))}
 
           <Divider />
 
-          <Win id="easy-club" index="02" title="Easy Club">
-            <EasyClub data={easyClub} />
-          </Win>
-
-          <Win id="opacitys" index="03" title="Opacitys">
-            <Opacitys data={opacitys} />
-          </Win>
+          {studies.map((s) => (
+            <Win key={s.id} id={s.id} index={nextIndex()} title={s.title}>
+              {s.node}
+            </Win>
+          ))}
 
           <Divider />
 
-          <Win id="personnel" index="04" title="Personnel File">
-            <PersonnelFile data={profile} />
-          </Win>
-
-          <Win id="service" index="05" title="Experience">
-            <ServiceRecord roles={roles} />
-          </Win>
-
-          <Win id="capabilities" index="06" title="Skills">
-            <Capabilities groups={skillGroups} />
-          </Win>
-
-          <Win id="education" index="07" title="Education & Beyond">
-            <EducationBeyond entries={education} roles={additionalRoles} data={profile} />
-          </Win>
+          {resume.map((s) => (
+            <Win key={s.id} id={s.id} index={nextIndex()} title={s.title}>
+              {s.node}
+            </Win>
+          ))}
 
           <Divider />
 
-          <Win id="transmit" index="08" title="Contact">
-            <Transmit data={profile} />
-          </Win>
+          {contact.map((s) => (
+            <Win key={s.id} id={s.id} index={nextIndex()} title={s.title}>
+              {s.node}
+            </Win>
+          ))}
 
           <Colophon data={profile} />
         </main>
       </WindowProvider>
 
-      <Diagnostics />
+      <Diagnostics modules={diagnosticsModules} />
     </>
   );
 }

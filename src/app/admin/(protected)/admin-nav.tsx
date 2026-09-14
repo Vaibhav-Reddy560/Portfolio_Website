@@ -13,6 +13,7 @@ const LINKS = [
   { href: '/admin/skills', label: 'Skills', index: '04' },
   { href: '/admin/education', label: 'Education', index: '05' },
   { href: '/admin/profile', label: 'Profile', index: '06' },
+  { href: '/admin/security', label: 'Security', index: '07' },
 ] as const;
 
 export function AdminNav({ email }: { email: string }) {
@@ -23,8 +24,11 @@ export function AdminNav({ email }: { email: string }) {
   const handleSignOut = () => {
     startTransition(async () => {
       await signOut();
+      // No router.refresh() needed here, unlike after signing in: /admin/login
+      // isn't gated by the session that just ended, so there's no stale
+      // "still logged in" payload it could otherwise serve from the client
+      // router cache — the push alone fetches it fresh.
       router.push('/admin/login');
-      router.refresh();
     });
   };
 

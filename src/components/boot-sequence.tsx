@@ -21,9 +21,18 @@ const STORAGE_KEY = 'boot-done';
  * Runs once per session. Skippable, and skipped outright for anyone who has
  * asked for reduced motion — the site underneath is fully rendered the whole
  * time, so this never gates access to content.
+ *
+ * `active` defaults to `true` — matching what the server renders — so the
+ * overlay is present from the very first painted frame with no client-only
+ * mount flashing the bare site first. For a visitor who has already seen it
+ * this session, the blocking script in layout.tsx has already hidden it via
+ * CSS (`[data-booted] .boot-overlay`) before this component ever hydrates;
+ * the effect below just syncs React's own state to match, so it stops
+ * rendering the (already invisible) overlay rather than leaving it — and its
+ * timers and key/pointer listeners — sitting around doing nothing.
  */
 export function BootSequence() {
-  const [active, setActive] = useState(false);
+  const [active, setActive] = useState(true);
   const [shown, setShown] = useState(0);
   const [done, setDone] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -48,9 +57,11 @@ export function BootSequence() {
       seen = false;
     }
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (seen || reduced) return;
+    if (seen || reduced) {
+      setActive(false);
+      return;
+    }
 
-    setActive(true);
     document.body.style.overflow = 'hidden';
 
     LINES.forEach((_, i) => {
@@ -86,7 +97,7 @@ export function BootSequence() {
       // aria-hidden: the real page is already in the DOM behind this, so screen
       // readers should read that rather than a decorative animation.
       aria-hidden
-      className={`crt fixed inset-0 z-[900] flex flex-col justify-center px-5 transition-opacity duration-[400ms] sm:px-12 ${
+      className={`boot-overlay crt fixed inset-0 z-[900] flex flex-col justify-center px-5 transition-opacity duration-[400ms] sm:px-12 ${
         done ? 'pointer-events-none opacity-0' : 'opacity-100'
       }`}
     >

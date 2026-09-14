@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { draftCaseStudyFromNotes, type CaseStudyDraft } from '@/lib/ai';
-import { processArtwork, slugify } from '@/lib/images';
+import { processArtwork } from '@/lib/images';
+import { slugify } from '@/lib/slug';
 import { authClient } from '@/lib/supabase/server';
 
 export type DraftState = { draft?: CaseStudyDraft; error?: string };
