@@ -389,14 +389,14 @@ export function Transmit({ data = staticProfile }: { data?: ProfileData } = {}) 
             {contact.linkedinLabel} ↗
           </a>
         </Channel>
-        <Channel label="Product">
+        <Channel label="GitHub">
           <a
-            href={contact.easyclub}
+            href={contact.github}
             target="_blank"
             rel="noreferrer"
             className="text-xs hover:text-rust"
           >
-            easyclub.in ↗
+            {contact.githubLabel} ↗
           </a>
         </Channel>
         <Channel label="Résumé">

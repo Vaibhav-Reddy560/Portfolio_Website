@@ -56,6 +56,8 @@ export async function updateProfile(_prev: { error?: string }, formData: FormDat
       phoneParts: [String(formData.get('phone') ?? '').trim()],
       linkedin: String(formData.get('linkedin') ?? '').trim(),
       linkedinLabel: String(formData.get('linkedinLabel') ?? '').trim(),
+      github: String(formData.get('github') ?? '').trim(),
+      githubLabel: String(formData.get('githubLabel') ?? '').trim(),
       easyclub: String(formData.get('easyclub') ?? '').trim(),
       resume: String(formData.get('resume') ?? '').trim(),
     },

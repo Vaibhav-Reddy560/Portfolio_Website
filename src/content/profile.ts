@@ -38,6 +38,8 @@ export const profile = {
     phoneParts: ['+91 ', '94811', ' ', '49729'],
     linkedin: 'https://www.linkedin.com/in/vaibhav-reddy-982b0a25b/',
     linkedinLabel: 'linkedin.com/in/vaibhav-reddy',
+    github: 'https://github.com/Vaibhav-Reddy560',
+    githubLabel: 'github.com/Vaibhav-Reddy560',
     easyclub: 'https://easyclub.in',
     resume: '/Vaibhav_Reddy_Resume.pdf',
   },

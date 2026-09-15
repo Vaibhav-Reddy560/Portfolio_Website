@@ -21,6 +21,8 @@ export type ProfileRowData = {
     phoneParts?: string[];
     linkedin?: string;
     linkedinLabel?: string;
+    github?: string;
+    githubLabel?: string;
     easyclub?: string;
     resume?: string;
   };
@@ -61,6 +63,8 @@ export function ProfileForm({ data }: { data: ProfileRowData }) {
     fd.set('phone', val('phone'));
     fd.set('linkedin', val('linkedin'));
     fd.set('linkedinLabel', val('linkedinLabel'));
+    fd.set('github', val('github'));
+    fd.set('githubLabel', val('githubLabel'));
     fd.set('easyclub', val('easyclub'));
     fd.set('resume', val('resume'));
 
@@ -148,6 +152,8 @@ export function ProfileForm({ data }: { data: ProfileRowData }) {
           <Field id="phone" label="Phone" defaultValue={(data.contact.phoneParts ?? []).join('')} />
           <Field id="linkedin" label="LinkedIn URL" defaultValue={data.contact.linkedin ?? ''} />
           <Field id="linkedinLabel" label="LinkedIn label" defaultValue={data.contact.linkedinLabel ?? ''} />
+          <Field id="github" label="GitHub URL" defaultValue={data.contact.github ?? ''} />
+          <Field id="githubLabel" label="GitHub label" defaultValue={data.contact.githubLabel ?? ''} />
           <Field id="easyclub" label="Product URL" defaultValue={data.contact.easyclub ?? ''} />
           <Field id="resume" label="Resume path/URL" defaultValue={data.contact.resume ?? ''} />
         </div>

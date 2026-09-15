@@ -43,7 +43,7 @@ const personSchema = {
   jobTitle: profile.role,
   email: `mailto:${profile.contact.email}`,
   url: SITE,
-  sameAs: [profile.contact.linkedin, profile.contact.easyclub],
+  sameAs: [profile.contact.linkedin, profile.contact.github, profile.contact.easyclub],
   address: {
     '@type': 'PostalAddress',
     addressLocality: 'Bengaluru',
