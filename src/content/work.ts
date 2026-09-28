@@ -61,6 +61,12 @@ export type BuildProject = {
   summary: string;
 };
 
+/**
+ * Mirrors the published rows of the `projects` table, which is what the site
+ * actually renders — this list is only reached when Supabase is unreachable.
+ * Nothing syncs it automatically, so a project added or edited through the
+ * admin has to be copied here by hand, or it vanishes on the day it matters.
+ */
 export const builds: BuildProject[] = [
   {
     slug: 'easy-club',
@@ -86,12 +92,54 @@ export const builds: BuildProject[] = [
   },
   {
     slug: 'portfolio',
-    title: 'This Terminal',
+    title: 'This Portfolio',
     tagline: 'A portfolio you operate',
     year: '2026',
-    stack: ['Next.js 16', 'TypeScript', 'Tailwind CSS', 'Motion'],
+    stack: [
+      'Next.js 16',
+      'React 19',
+      'TypeScript',
+      'Tailwind CSS',
+      'Motion',
+      'Supabase',
+      'TensorFlow.js',
+    ],
     summary:
-      'Built as a machine rather than a page: every section is a window you can drag, minimise and close, with a live diagnostic readout reporting real telemetry from the DOM.',
+      'Every section is a window you can drag, minimise and close, backed by a live diagnostics HUD reading real DOM telemetry. Content runs through a self-serve admin with row-level-secured Supabase and AI-assisted drafting — including camera-based Face ID sign-in, running entirely client-side.',
+  },
+  {
+    slug: 'satquery-ai',
+    title: 'SatQuery AI',
+    tagline: 'Conversational satellite intelligence platform.',
+    year: '2026',
+    href: 'https://satquery-ai-sih.vercel.app/',
+    hrefLabel: 'satquery-ai-sih.vercel.app',
+    stack: [
+      'Python',
+      'PyTorch',
+      'Hugging Face Transformers',
+      'Remote-Sensing VLM',
+      'LLM',
+      'GeoPandas',
+      'Rasterio',
+      'GDAL',
+      'FastAPI',
+      'React',
+      'PostGIS',
+    ],
+    summary:
+      'SatQuery AI is an interactive, agentic vision-language assistant that lets users analyze satellite imagery through natural-language queries. It accepts single, optical-SAR, and bi-temporal remote-sensing images, automatically identifies the required analysis task, selects the appropriate AI model or GIS tool, and returns evidence-grounded visual and textual results. It enables VQA, scene understanding, region grounding, change analysis, and multimodal optical-SAR reasoning without requiring users to have specialized GIS or remote-sensing expertise.',
+  },
+  {
+    slug: 'pathos',
+    title: 'PathOS',
+    tagline: 'The map is the interface',
+    year: '2026',
+    href: 'https://github.com/Vaibhav-Reddy560/PathOS',
+    hrefLabel: 'github.com/Vaibhav-Reddy560/PathOS',
+    stack: ['Swift 6', 'SwiftUI', 'MapKit', 'SwiftData', 'CoreLocation', 'FoundationModels'],
+    summary:
+      "An iPhone app that plans a Bengaluru journey end to end — an auto to the metro, the metro across the city, another auto at the far end — each leg with its own time and fare. Mail and timetables are read by Apple's on-device model, so nothing about the day leaves the phone.",
   },
 ];
 
