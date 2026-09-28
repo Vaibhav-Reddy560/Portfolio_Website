@@ -16,6 +16,7 @@ async function getProject(id: string): Promise<ProjectInitial | null> {
     year: data.year ?? '',
     href: data.href ?? '',
     hrefLabel: data.href_label ?? '',
+    repoUrl: data.repo_url ?? '',
     summary: data.summary ?? '',
     thesis: data.thesis ?? '',
     stack: data.stack ?? [],

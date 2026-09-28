@@ -39,6 +39,7 @@ export async function saveProject(_prev: SaveState, formData: FormData): Promise
   const year = String(formData.get('year') ?? '').trim();
   const href = String(formData.get('href') ?? '').trim();
   const hrefLabel = String(formData.get('hrefLabel') ?? '').trim();
+  const repoUrl = String(formData.get('repoUrl') ?? '').trim();
   const summary = String(formData.get('summary') ?? '').trim();
   const thesis = String(formData.get('thesis') ?? '').trim();
   const note = String(formData.get('note') ?? '').trim();
@@ -65,6 +66,7 @@ export async function saveProject(_prev: SaveState, formData: FormData): Promise
     year: year || null,
     href: href || null,
     href_label: hrefLabel || null,
+    repo_url: repoUrl || null,
     summary: summary || null,
     thesis: thesis || null,
     note: note || null,

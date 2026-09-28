@@ -15,6 +15,7 @@ export type ProjectInitial = {
   year: string;
   href: string;
   hrefLabel: string;
+  repoUrl: string;
   summary: string;
   thesis: string;
   stack: string[];
@@ -164,6 +165,7 @@ export function ProjectForm({ initial }: { initial?: ProjectInitial }) {
     fd.set('year', val('year'));
     fd.set('href', val('href'));
     fd.set('hrefLabel', val('hrefLabel'));
+    fd.set('repoUrl', val('repoUrl'));
     fd.set('summary', val('summary'));
     fd.set('thesis', val('thesis'));
     fd.set('stack', val('stack'));
@@ -228,6 +230,7 @@ export function ProjectForm({ initial }: { initial?: ProjectInitial }) {
               <Field id="href" label="Link URL" defaultValue={initial?.href} />
               <Field id="hrefLabel" label="Link label" defaultValue={initial?.hrefLabel} />
             </div>
+            <Field id="repoUrl" label="Repo URL (optional)" defaultValue={initial?.repoUrl} />
             <Field id="stack" label="Stack (comma separated)" defaultValue={(initial?.stack ?? draft?.stack ?? []).join(', ')} />
             <TextArea id="summary" label="Summary" rows={3} defaultValue={initial?.summary} />
             <TextArea id="thesis" label="Thesis" rows={3} defaultValue={initial?.thesis ?? draft?.thesis} />

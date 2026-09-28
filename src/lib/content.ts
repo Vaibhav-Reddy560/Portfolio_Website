@@ -132,6 +132,8 @@ export type CaseStudyProject = {
   year?: string;
   href?: string;
   hrefLabel?: string;
+  /** Source repository — surfaced as a second button beside the live-site link. */
+  repoHref?: string;
   thesis?: string;
   stack: string[];
   note?: string;
@@ -150,6 +152,7 @@ const STATIC_CASE_STUDIES: CaseStudyProject[] = [
     year: staticEasyClub.year,
     href: staticEasyClub.href,
     hrefLabel: staticEasyClub.hrefLabel,
+    repoHref: staticEasyClub.repo,
     thesis: staticEasyClub.thesis,
     stack: [...staticEasyClub.stack],
     note: staticEasyClub.note,
@@ -163,6 +166,7 @@ const STATIC_CASE_STUDIES: CaseStudyProject[] = [
     year: staticOpacitys.year,
     href: staticOpacitys.href,
     hrefLabel: staticOpacitys.hrefLabel,
+    repoHref: staticOpacitys.repo,
     thesis: staticOpacitys.thesis,
     stack: [...staticOpacitys.stack],
     note: staticOpacitys.note,
@@ -202,6 +206,7 @@ export const getCaseStudies = unstable_cache(
           year: row.year ?? undefined,
           href: row.href ?? undefined,
           hrefLabel: row.href_label ?? undefined,
+          repoHref: row.repo_url ?? undefined,
           thesis: row.thesis ?? undefined,
           stack: row.stack ?? [],
           note: row.note ?? undefined,

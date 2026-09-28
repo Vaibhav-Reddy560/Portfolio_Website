@@ -11,6 +11,7 @@ import {
 } from '@/lib/case-study-shape';
 import type { CaseStudyProject } from '@/lib/content';
 import { Barcode, Decal, Gauge, Led, SerialPlate } from './hardware';
+import { GitHubMark } from './icons';
 import { Atom, Checker, Starburst, Waveform } from './y2k';
 
 function Reveal({
@@ -135,15 +136,20 @@ export function CaseStudy({ data }: { data: CaseStudyProject }) {
           </Reveal>
 
           <Reveal delay={0.08}>
-            {data.href ? (
-              <a
-                href={data.href}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-primary mt-5"
-              >
-                Visit {data.hrefLabel ?? data.href} ↗
-              </a>
+            {data.href || data.repoHref ? (
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                {data.href ? (
+                  <a href={data.href} target="_blank" rel="noreferrer" className="btn btn-primary">
+                    Visit {data.hrefLabel ?? data.href} ↗
+                  </a>
+                ) : null}
+                {data.repoHref ? (
+                  <a href={data.repoHref} target="_blank" rel="noreferrer" className="btn">
+                    <GitHubMark className="h-4 w-4" />
+                    Source ↗
+                  </a>
+                ) : null}
+              </div>
             ) : null}
             {data.stack.length ? (
               <div className="mt-2 flex flex-wrap items-center gap-2">

@@ -14,6 +14,7 @@ export const easyClub = {
   name: 'Easy Club',
   href: 'https://easyclub.in',
   hrefLabel: 'easyclub.in',
+  repo: 'https://github.com/Vaibhav-Reddy560/Easy-Club',
   year: '2025 — Present',
   tagline: 'Club operations made easy',
   thesis:
@@ -68,6 +69,7 @@ export const opacitys = {
   name: 'Opacitys',
   href: 'https://opacitys.vercel.app',
   hrefLabel: 'opacitys.vercel.app',
+  repo: 'https://github.com/Vaibhav-Reddy560/Opacitys',
   year: '2026',
   tagline: 'An AI creative workspace for designers',
   thesis:
