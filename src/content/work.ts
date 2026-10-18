@@ -7,47 +7,55 @@ export type DesignPiece = {
   context: string;
   kind: string;
   year: string;
-  /** width / height. Drives the placeholder slot so the gallery keeps its rhythm. */
+  /** width / height, from the real file. Sizes the slot so the masonry never shifts. */
   ratio: number;
   /**
-   * Absent until an image is dropped in. Add
-   * `src: '/work/designs/<slug>.webp'` once the file exists and the slot
-   * becomes a real image with no other change.
+   * A committed file under `public/work/designs/`, served straight from the
+   * deployment. Optional only so a newly added piece can hold its slot for the
+   * one commit before its artwork lands.
    */
   src?: string;
   alt?: string;
 };
 
 /**
- * Slots, not images. Every entry keeps its identity so the gallery reads as a
- * planned set while the artwork is being supplied — drop a file at
- * `public/work/designs/<slug>.webp` and add `src` to light it up.
+ * The gallery's floor, and the reason it cannot go blank.
  *
- * The 22 originally extracted posters are archived at `public/work/extracted/`.
+ * The live site prefers the `designs` table, where pieces are managed through
+ * the admin and served from Supabase Storage. When that is unreachable — an
+ * outage, a suspended project, a rotated key — this list is what renders, so
+ * every entry carries a real `src` pointing at a webp committed to the repo.
+ * These 22 are the originals rendered by scripts/build-assets.mjs; they used to
+ * sit unused in `public/work/extracted/` while the fallback showed empty slots,
+ * which is exactly how the gallery once came up with no artwork at all.
+ *
+ * Adding a piece: put the file at `public/work/designs/<slug>.webp`, add the
+ * entry here with its true ratio, then upload through the admin. Both layers
+ * then hold it, and neither one alone is a single point of failure.
  */
 export const designs: DesignPiece[] = [
-  { slug: 'utsav-inauguration-lineup', title: 'Inauguration & Artist Lineup', context: 'UTSAV 2026', kind: 'Poster series', year: '2026', ratio: 0.8 },
-  { slug: 'utsav-dj-night', title: 'DJ Night', context: 'UTSAV 2026', kind: 'Event poster', year: '2026', ratio: 0.8 },
-  { slug: 'utsav-flashmob', title: 'Flashmob', context: 'UTSAV 2026', kind: 'Event poster', year: '2026', ratio: 0.8 },
-  { slug: 'utsav-moto-show', title: 'Moto Show', context: 'UTSAV 2026', kind: 'Event poster', year: '2026', ratio: 0.8 },
-  { slug: 'utsav-vc-meet', title: 'VC Meet', context: 'UTSAV 2026', kind: 'Event poster', year: '2026', ratio: 0.8 },
-  { slug: 'facultys-got-talent', title: "Faculty's Got Talent", context: 'UTSAV 2026', kind: 'Event poster', year: '2026', ratio: 0.8 },
-  { slug: 'trial-by-combat', title: 'Trial by Combat', context: 'Code IO × UTSAV 2026', kind: 'Event poster', year: '2026', ratio: 0.8 },
-  { slug: 'utsav-certificate', title: 'Certificate of Appreciation', context: 'UTSAV 2026', kind: 'Certificate', year: '2026', ratio: 1.414 },
-  { slug: 'easy-club-launch', title: 'Easy Club Launch', context: 'Easy Club', kind: 'Product poster', year: '2025', ratio: 0.8 },
-  { slug: 'agentic-ai-unpacked', title: 'Agentic AI Unpacked', context: 'BMSCE IEEE CS × GitHub', kind: 'Speaker session', year: '2025', ratio: 0.803 },
-  { slug: 'repogenesis', title: 'RepoGenesis', context: 'Open Source Week', kind: 'Hackathon poster', year: '2025', ratio: 0.799 },
-  { slug: 'open-source-week-lockup', title: 'Open Source Week', context: 'BMSCE IEEE CS', kind: 'Type lockup', year: '2025', ratio: 3.944 },
-  { slug: 'data-heist', title: 'Data Heist', context: 'Phase Shift 2025', kind: 'Event poster', year: '2025', ratio: 0.998 },
-  { slug: 'holoverse-360', title: 'Holoverse 360', context: 'BMSCE IEEE CS', kind: 'Workshop poster', year: '2025', ratio: 0.999 },
-  { slug: 'wattweb', title: 'WattWeb', context: 'PES Day 2025', kind: 'Event poster', year: '2025', ratio: 1.0 },
-  { slug: 'ieee-cs-2026-identity', title: 'Chapter Identity 2026', context: 'BMSCE IEEE CS', kind: 'Identity graphic', year: '2026', ratio: 0.925 },
-  { slug: 'ieee-cs-bc-student-chairs-meetup', title: 'Student Chairs Meet Up', context: 'IEEE CS Bangalore Chapter', kind: 'Event poster', year: '2026', ratio: 0.8 },
-  { slug: 'tech-for-good-summit', title: 'Tech for Good Summit', context: 'BMSCE IEEE CS × WIE', kind: 'Teaser poster', year: '2026', ratio: 0.8 },
-  { slug: 'out-campus-campaigning', title: 'Out Campus Campaigning', context: 'Phase Shift', kind: 'Event poster', year: '2025', ratio: 0.8 },
-  { slug: 'hackaphasia-volunteer-badge', title: 'Volunteer Badge', context: 'Hackaphasia', kind: 'Badge system', year: '2025', ratio: 0.848 },
-  { slug: 'hardware-hackathon-exec-badge', title: 'Executive Committee Badge', context: 'Hardware Hackathon III', kind: 'Badge system', year: '2025', ratio: 0.749 },
-  { slug: 'phaseshift-meridian-core-badge', title: 'Meridian Core Badge', context: 'Phase Shift 2025', kind: 'Badge system', year: '2025', ratio: 0.749 },
+  { slug: 'utsav-inauguration-lineup', title: 'Inauguration & Artist Lineup', context: 'UTSAV 2026', kind: 'Poster series', year: '2026', ratio: 0.8, src: '/work/designs/utsav-inauguration-lineup.webp' },
+  { slug: 'utsav-dj-night', title: 'DJ Night', context: 'UTSAV 2026', kind: 'Event poster', year: '2026', ratio: 0.798, src: '/work/designs/utsav-dj-night.webp' },
+  { slug: 'utsav-flashmob', title: 'Flashmob', context: 'UTSAV 2026', kind: 'Event poster', year: '2026', ratio: 0.799, src: '/work/designs/utsav-flashmob.webp' },
+  { slug: 'utsav-moto-show', title: 'Moto Show', context: 'UTSAV 2026', kind: 'Event poster', year: '2026', ratio: 0.8, src: '/work/designs/utsav-moto-show.webp' },
+  { slug: 'utsav-vc-meet', title: 'VC Meet', context: 'UTSAV 2026', kind: 'Event poster', year: '2026', ratio: 0.8, src: '/work/designs/utsav-vc-meet.webp' },
+  { slug: 'facultys-got-talent', title: "Faculty's Got Talent", context: 'UTSAV 2026', kind: 'Event poster', year: '2026', ratio: 0.8, src: '/work/designs/facultys-got-talent.webp' },
+  { slug: 'trial-by-combat', title: 'Trial by Combat', context: 'Code IO × UTSAV 2026', kind: 'Event poster', year: '2026', ratio: 0.8, src: '/work/designs/trial-by-combat.webp' },
+  { slug: 'utsav-certificate', title: 'Certificate of Appreciation', context: 'UTSAV 2026', kind: 'Certificate', year: '2026', ratio: 1.414, src: '/work/designs/utsav-certificate.webp' },
+  { slug: 'easy-club-launch', title: 'Easy Club Launch', context: 'Easy Club', kind: 'Product poster', year: '2025', ratio: 0.8, src: '/work/designs/easy-club-launch.webp' },
+  { slug: 'agentic-ai-unpacked', title: 'Agentic AI Unpacked', context: 'BMSCE IEEE CS × GitHub', kind: 'Speaker session', year: '2025', ratio: 0.803, src: '/work/designs/agentic-ai-unpacked.webp' },
+  { slug: 'repogenesis', title: 'RepoGenesis', context: 'Open Source Week', kind: 'Hackathon poster', year: '2025', ratio: 0.799, src: '/work/designs/repogenesis.webp' },
+  { slug: 'open-source-week-lockup', title: 'Open Source Week', context: 'BMSCE IEEE CS', kind: 'Type lockup', year: '2025', ratio: 3.944, src: '/work/designs/open-source-week-lockup.webp' },
+  { slug: 'data-heist', title: 'Data Heist', context: 'Phase Shift 2025', kind: 'Event poster', year: '2025', ratio: 0.998, src: '/work/designs/data-heist.webp' },
+  { slug: 'holoverse-360', title: 'Holoverse 360', context: 'BMSCE IEEE CS', kind: 'Workshop poster', year: '2025', ratio: 0.999, src: '/work/designs/holoverse-360.webp' },
+  { slug: 'wattweb', title: 'WattWeb', context: 'PES Day 2025', kind: 'Event poster', year: '2025', ratio: 1.0, src: '/work/designs/wattweb.webp' },
+  { slug: 'ieee-cs-2026-identity', title: 'Chapter Identity 2026', context: 'BMSCE IEEE CS', kind: 'Identity graphic', year: '2026', ratio: 0.925, src: '/work/designs/ieee-cs-2026-identity.webp' },
+  { slug: 'ieee-cs-bc-student-chairs-meetup', title: 'Student Chairs Meet Up', context: 'IEEE CS Bangalore Chapter', kind: 'Event poster', year: '2026', ratio: 0.8, src: '/work/designs/ieee-cs-bc-student-chairs-meetup.webp' },
+  { slug: 'tech-for-good-summit', title: 'Tech for Good Summit', context: 'BMSCE IEEE CS × WIE', kind: 'Teaser poster', year: '2026', ratio: 0.8, src: '/work/designs/tech-for-good-summit.webp' },
+  { slug: 'out-campus-campaigning', title: 'Out Campus Campaigning', context: 'Phase Shift', kind: 'Event poster', year: '2025', ratio: 0.8, src: '/work/designs/out-campus-campaigning.webp' },
+  { slug: 'hackaphasia-volunteer-badge', title: 'Volunteer Badge', context: 'Hackaphasia', kind: 'Badge system', year: '2025', ratio: 0.848, src: '/work/designs/hackaphasia-volunteer-badge.webp' },
+  { slug: 'hardware-hackathon-exec-badge', title: 'Executive Committee Badge', context: 'Hardware Hackathon III', kind: 'Badge system', year: '2025', ratio: 0.749, src: '/work/designs/hardware-hackathon-exec-badge.webp' },
+  { slug: 'phaseshift-meridian-core-badge', title: 'Meridian Core Badge', context: 'Phase Shift 2025', kind: 'Badge system', year: '2025', ratio: 0.749, src: '/work/designs/phaseshift-meridian-core-badge.webp' },
 ];
 
 export type BuildProject = {

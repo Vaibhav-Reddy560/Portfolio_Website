@@ -78,8 +78,12 @@ at runtime. Move it out of `public/` if you would rather not ship it.
 Batch-converting a PDF or folder? `node scripts/build-assets.mjs "<file.pdf>"`
 renders, trims and converts to webp. Needs `brew install poppler`.
 
-The 22 posters extracted from your original PDF are archived at
-`public/work/extracted/` — nothing was thrown away.
+The 22 posters extracted from your original PDF live at
+`public/work/designs/`, committed and served from the deployment. They are the
+gallery's fallback: the live site prefers the `designs` table and Supabase
+Storage, but when that is unreachable these render instead, so the gallery never
+comes up empty. Keep both in step — a new piece goes in this folder *and* in the
+`designs` list in `src/content/work.ts`, as well as through the admin.
 
 ## Window system
 
