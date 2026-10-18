@@ -56,6 +56,13 @@ export const designs: DesignPiece[] = [
   { slug: 'hackaphasia-volunteer-badge', title: 'Volunteer Badge', context: 'Hackaphasia', kind: 'Badge system', year: '2025', ratio: 0.848, src: '/work/designs/hackaphasia-volunteer-badge.webp' },
   { slug: 'hardware-hackathon-exec-badge', title: 'Executive Committee Badge', context: 'Hardware Hackathon III', kind: 'Badge system', year: '2025', ratio: 0.749, src: '/work/designs/hardware-hackathon-exec-badge.webp' },
   { slug: 'phaseshift-meridian-core-badge', title: 'Meridian Core Badge', context: 'Phase Shift 2025', kind: 'Badge system', year: '2025', ratio: 0.749, src: '/work/designs/phaseshift-meridian-core-badge.webp' },
+  // Added through the admin, mirrored back here. Three carry the drafting
+  // placeholder they were saved with — fix them in the admin and copy the real
+  // context across, in both places.
+  { slug: 'registrations-opening-soon', title: 'Registrations Opening Soon', context: 'TBD — please review', kind: 'Announcement poster', year: '2026', ratio: 0.8, src: '/work/designs/registrations-opening-soon.webp' },
+  { slug: 'merch', title: 'Merch', context: 'TBD — please review', kind: 'Merchandise design', year: '2026', ratio: 0.707, src: '/work/designs/merch.webp' },
+  { slug: 'plenary-talks', title: 'PLenary Talks', context: 'BTC 2026', kind: 'Speaker session', year: '2026', ratio: 0.8, src: '/work/designs/plenary-talks.webp' },
+  { slug: 'round-3', title: 'Round 3', context: 'TBD — please review', kind: 'Event poster', year: '2026', ratio: 1.414, src: '/work/designs/round-3.webp' },
 ];
 
 export type BuildProject = {
