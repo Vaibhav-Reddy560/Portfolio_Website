@@ -114,3 +114,22 @@ stacking context that traps windows beneath the HUD.
 
 All copy is in `src/content/` — `profile.ts`, `experience.ts`, `skills.ts`,
 `work.ts`. Components never hold text.
+
+Those files are also the fallback. Every loader in `src/lib/content.ts` reads
+`database ?? static file`, so the public site renders in full even with Supabase
+unreachable — provided the static copy is complete. Keep it that way: a project
+or design added through the admin must be copied back here, images included.
+
+## Keeping the database awake
+
+Supabase pauses a free project after **7 days with no activity**, and this site
+only queries it when someone loads a page — so a quiet week takes down the admin,
+login, and anything that lives only in the database. That happened in October 2026.
+
+`/api/keep-alive` performs one small read, and `vercel.json` schedules it daily.
+It returns 503 when the database is unreachable, so it also works as the endpoint
+for an uptime monitor. Set `CRON_SECRET` in the Vercel project to restrict it to
+scheduled invocations.
+
+Paused is not deleted: restore from the Vercel dashboard (Storage → the Supabase
+resource) or from the Supabase dashboard, and the data comes back as it was.
