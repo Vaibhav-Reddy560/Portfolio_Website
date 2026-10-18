@@ -1,5 +1,6 @@
 'use server';
 
+import { isBackendUnreachable } from '@/lib/supabase/reachability';
 import { authClient, supabaseConfigured } from '@/lib/supabase/server';
 import { adminClient, adminEmail } from '@/lib/supabase/admin';
 import { FACE_DESCRIPTOR_LENGTH, FACE_MATCH_AGREEMENT, FACE_MATCH_THRESHOLD } from '@/lib/face/constants';
@@ -90,7 +91,7 @@ export async function signInWithFace(
 
   // Independent reads, and the email is memoised after the first sign-in on
   // this instance — so this is one round trip rather than three serial ones.
-  const [{ data: attempts }, { data: enrolled }, email] = await Promise.all([
+  const [{ data: attempts }, { data: enrolled, error: enrolledError }, email] = await Promise.all([
     admin.from('face_login_attempts').select('failed_count, locked_until').eq('id', true).maybeSingle(),
     admin.from('face_descriptors').select('descriptor'),
     adminEmail(),
@@ -98,6 +99,17 @@ export async function signInWithFace(
 
   if (attempts?.locked_until && new Date(attempts.locked_until) > new Date()) {
     return { error: 'Too many failed attempts. Use your password, or try Face ID again later.' };
+  }
+
+  // A failed read is not an empty one. Telling the operator Face ID was never
+  // set up, while the database was simply unreachable, is how an outage reads
+  // as lost enrollment — and sends them re-enrolling a face that is still
+  // there. No rows *and* no error is the only genuine "not set up".
+  if (enrolledError) {
+    console.error('[face-login] descriptor read failed:', enrolledError);
+    return isBackendUnreachable(enrolledError)
+      ? { error: 'Can’t reach the database — Face ID is unavailable until it is back. Your enrollment is intact.' }
+      : { error: 'Could not sign in with Face ID right now.' };
   }
 
   if (!enrolled || enrolled.length === 0) {

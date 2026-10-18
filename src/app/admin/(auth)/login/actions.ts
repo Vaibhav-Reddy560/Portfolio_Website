@@ -1,5 +1,6 @@
 'use server';
 
+import { isBackendUnreachable } from '@/lib/supabase/reachability';
 import { authClient, supabaseConfigured } from '@/lib/supabase/server';
 
 export type LoginState = { error?: string; redirectTo?: string };
@@ -30,6 +31,16 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    // An unreachable or broken auth service is not a wrong password, and saying
+    // so sent the operator hunting for a typo during an outage where the host
+    // did not resolve at all. Anything that is not a straight rejection by the
+    // auth API — a network failure, a 5xx, a suspended project — says so.
+    if (isBackendUnreachable(error)) {
+      console.error('[login] auth backend unreachable:', error);
+      return {
+        error: 'Can’t reach the authentication service — the database may be down. Your password is fine.',
+      };
+    }
     // Deliberately generic — never confirms whether the email exists.
     return { error: 'Incorrect email or password.' };
   }
