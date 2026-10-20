@@ -120,6 +120,19 @@ Those files are also the fallback. Every loader in `src/lib/content.ts` reads
 unreachable — provided the static copy is complete. Keep it that way: a project
 or design added through the admin must be copied back here, images included.
 
+## AI drafting
+
+The admin can draft a design's fields from its artwork, and a case study from
+rough notes. Both run on `GOOGLE_GENERATIVE_AI_API_KEY` (Gemini 3.5 Flash with
+minimal thinking — a thinking model turned a 2s job into minutes here).
+
+`OPENAI_API_KEY` is the standby. If Gemini is out of quota, rate limited, down,
+or slow enough to hit the 25s timeout, the same request is retried once on
+OpenAI. Anything else — a malformed request, a schema the model could not meet —
+fails straight away, since it would fail identically there.
+
+Drafting is always optional: both failures leave the form editable by hand.
+
 ## Keeping the database awake
 
 Supabase pauses a free project after **7 days with no activity**, and this site

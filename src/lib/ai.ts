@@ -1,13 +1,15 @@
 /**
- * Gemini-backed drafting. Every call uses generateObject with a Zod schema, so
- * output is typed and validated rather than free text this app has to parse.
+ * Gemini-backed drafting, with OpenAI behind it. Every call uses generateObject
+ * with a Zod schema, so output is typed and validated rather than free text this
+ * app has to parse.
  *
  * These functions only ever produce a draft. Nothing here writes to the
  * database — the caller always lands the result in an editable form, and
  * publishing is a separate, explicit step the admin takes.
  */
 import { google } from '@ai-sdk/google';
-import { generateObject } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { generateObject, type LanguageModel, type ModelMessage } from 'ai';
 import sharp from 'sharp';
 import { z } from 'zod';
 
@@ -31,11 +33,90 @@ const MODEL = 'gemini-3.5-flash';
 const THINKING = { google: { thinkingConfig: { thinkingLevel: 'minimal' as const } } };
 
 /**
- * A draft is a convenience, never the only way to fill the form — so it is
- * given a bounded slice of time and then gives up, rather than holding the UI
- * while the operator waits for an answer they can type themselves.
+ * The standby, used only when Gemini will not answer — out of quota, rate
+ * limited, or down. Mini rather than full: this is extraction, and the fallback
+ * should be quick and cheap, not clever.
+ *
+ * `reasoningEffort: 'none'` is the GPT-5-family equivalent of minimal thinking;
+ * 'minimal' is rejected by this model, 'none' and 'low' are accepted.
  */
-const DRAFT_TIMEOUT_MS = 45_000;
+const FALLBACK_MODEL = 'gpt-5.4-mini';
+const FALLBACK_EFFORT = { openai: { reasoningEffort: 'none' as const } };
+
+/** Absent on a deployment with no OpenAI key — Gemini then has no standby. */
+const fallbackConfigured = Boolean(process.env.OPENAI_API_KEY);
+
+/**
+ * A draft is a convenience, never the only way to fill the form — so each
+ * attempt is given a bounded slice of time and then gives up, rather than
+ * holding the UI while the operator waits for an answer they can type
+ * themselves. Two attempts at 25s keep the pair inside a 60s function.
+ */
+const DRAFT_TIMEOUT_MS = 25_000;
+
+/**
+ * Whether a failed Gemini call is worth retrying on the other provider.
+ *
+ * Only for "Gemini cannot answer right now": quota exhaustion, rate limiting,
+ * an outage, or a timeout. A malformed request or a schema the model could not
+ * satisfy would fail identically on OpenAI, so those propagate immediately
+ * rather than costing a second call and another 25 seconds.
+ */
+function worthRetryingElsewhere(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  if (error.name === 'TimeoutError' || error.name === 'AbortError') return true;
+
+  const status = (error as { statusCode?: number }).statusCode;
+  if (typeof status === 'number' && (status === 429 || status === 403 || status >= 500)) return true;
+
+  const message = error.message.toLowerCase();
+  return [
+    'quota',
+    'rate limit',
+    'resource_exhausted',
+    'exhausted',
+    'overloaded',
+    'unavailable',
+    'too many requests',
+  ].some((pattern) => message.includes(pattern));
+}
+
+/**
+ * Runs a drafting request on Gemini, and on OpenAI if Gemini cannot take it.
+ *
+ * The fallback's own failure is reported as the fallback's, with the original
+ * Gemini error logged beside it — otherwise a quota problem on one provider
+ * reads as a mystery on the other.
+ */
+async function draftObject<Schema extends z.ZodType>(
+  schema: Schema,
+  request: { messages: ModelMessage[] } | { prompt: string },
+): Promise<z.infer<Schema>> {
+  // generateObject's overloads resolve its return type from a *concrete*
+  // schema; behind a generic one they collapse to unknown, and the prompt /
+  // messages union defeats them again. The shape passed in is exactly what the
+  // call sites used to pass inline, so it is asserted once here rather than
+  // forcing every caller to repeat the provider wiring.
+  const attempt = async (model: LanguageModel, providerOptions: unknown) => {
+    const { object } = await generateObject({
+      model,
+      schema,
+      ...request,
+      providerOptions,
+      abortSignal: AbortSignal.timeout(DRAFT_TIMEOUT_MS),
+    } as Parameters<typeof generateObject>[0]);
+    return object as z.infer<Schema>;
+  };
+
+  try {
+    return await attempt(google(MODEL), THINKING);
+  } catch (error) {
+    if (!fallbackConfigured || !worthRetryingElsewhere(error)) throw error;
+
+    console.warn('[ai] Gemini could not answer, falling back to OpenAI:', error);
+    return attempt(openai(FALLBACK_MODEL), FALLBACK_EFFORT);
+  }
+}
 
 const designDraftSchema = z.object({
   title: z.string().describe('Short piece name, e.g. "DJ Night"'),
@@ -65,9 +146,7 @@ export async function draftDesignFromImage(
     .jpeg({ quality: 82 })
     .toBuffer();
 
-  const { object } = await generateObject({
-    model: google(MODEL),
-    schema: designDraftSchema,
+  const object = await draftObject(designDraftSchema, {
     messages: [
       {
         role: 'user',
@@ -90,8 +169,6 @@ export async function draftDesignFromImage(
         ],
       },
     ],
-    providerOptions: THINKING,
-    abortSignal: AbortSignal.timeout(DRAFT_TIMEOUT_MS),
   });
   // Belt and suspenders: the model is instructed to keep the given title
   // verbatim, but only overwriting it here *guarantees* it — no risk of the
@@ -122,9 +199,7 @@ export type CaseStudyDraft = z.infer<typeof caseStudyDraftSchema>;
 
 /** Turns unstructured prose about a project into a structured case study. */
 export async function draftCaseStudyFromNotes(notes: string): Promise<CaseStudyDraft> {
-  const { object } = await generateObject({
-    model: google(MODEL),
-    schema: caseStudyDraftSchema,
+  return draftObject(caseStudyDraftSchema, {
     prompt: [
       'Turn these rough notes about a software project into a structured case study',
       'for a portfolio site. Group related features into 2-5 pillars, each with a short',
@@ -132,8 +207,5 @@ export async function draftCaseStudyFromNotes(notes: string): Promise<CaseStudyD
       '— do not invent features that are not mentioned.\n\nNotes:\n',
       notes,
     ].join(' '),
-    providerOptions: THINKING,
-    abortSignal: AbortSignal.timeout(DRAFT_TIMEOUT_MS),
   });
-  return object;
 }
