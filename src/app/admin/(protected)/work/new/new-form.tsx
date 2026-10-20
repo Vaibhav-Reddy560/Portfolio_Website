@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useRef, useState, useTransition } from 'react';
 import type { DesignDraft } from '@/lib/ai';
+import { downscaleForDrafting } from '@/lib/image-client';
 import { draftDesign, saveDesign } from '../actions';
 
 const KNOWN_KINDS = [
@@ -58,17 +59,31 @@ export function NewWorkForm() {
     setDraftError(null);
 
     startTransition(async () => {
-      const fd = new FormData();
-      fd.set('image', file);
-      fd.set('title', (document.getElementById('pre-title') as HTMLInputElement)?.value ?? '');
-      fd.set('notes', (document.getElementById('notes') as HTMLTextAreaElement)?.value ?? '');
-      const result = await draftDesign({}, fd);
-      if (result.error) {
-        setDraftError(result.error);
-        return;
+      try {
+        // A 10–35MB original is refused by the platform before the Action runs,
+        // so the model gets a bounded copy instead. The full file is still what
+        // onSave uploads.
+        const fd = new FormData();
+        fd.set('image', await downscaleForDrafting(file));
+        fd.set('title', (document.getElementById('pre-title') as HTMLInputElement)?.value ?? '');
+        fd.set('notes', (document.getElementById('notes') as HTMLTextAreaElement)?.value ?? '');
+        const result = await draftDesign({}, fd);
+        if (result.error) {
+          setDraftError(result.error);
+          return;
+        }
+        if (result.draft) setDraft(result.draft);
+        setShowForm(true);
+      } catch (error) {
+        // Anything reaching here failed before or outside the Action's own
+        // error handling — a rejected upload, a dropped connection, an image
+        // the browser cannot decode. Say that, rather than leaving the button
+        // to spin and the error in the console.
+        console.error('[work] drafting request failed:', error);
+        setDraftError(
+          'Could not send the image for drafting — check your connection, or skip and fill the fields in by hand.',
+        );
       }
-      if (result.draft) setDraft(result.draft);
-      setShowForm(true);
     });
   };
 
