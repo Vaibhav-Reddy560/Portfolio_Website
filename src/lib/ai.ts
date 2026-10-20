@@ -11,10 +11,31 @@ import { generateObject } from 'ai';
 import sharp from 'sharp';
 import { z } from 'zod';
 
-// Fast and current as of this build (verified directly against the Gemini API's
-// live model list) — noticeably quicker than 2.5 Flash on the same vision task
-// with no loss of accuracy on these images.
-const MODEL = 'gemini-3.7-flash';
+/**
+ * Chosen for latency, not for being the newest.
+ *
+ * 3.7 Flash was picked here as "fast and current", but it is a thinking model
+ * (the API reports `thinking: true`) and spends that budget by default. On a
+ * poster — a job that is really just reading text off an image — the same call
+ * measured 169 seconds, which is what left "Draft with AI" spinning. It also
+ * refuses `thinkingLevel: 'minimal'`, so the latency cannot be turned down.
+ *
+ * 3.5 Flash does accept it, and reads the same poster correctly in ~3s.
+ */
+const MODEL = 'gemini-3.5-flash';
+
+/**
+ * Minimal deliberation. Both drafting jobs are extraction, not reasoning: read
+ * what is on the artwork, or restructure notes the operator already wrote.
+ */
+const THINKING = { google: { thinkingConfig: { thinkingLevel: 'minimal' as const } } };
+
+/**
+ * A draft is a convenience, never the only way to fill the form — so it is
+ * given a bounded slice of time and then gives up, rather than holding the UI
+ * while the operator waits for an answer they can type themselves.
+ */
+const DRAFT_TIMEOUT_MS = 45_000;
 
 const designDraftSchema = z.object({
   title: z.string().describe('Short piece name, e.g. "DJ Night"'),
@@ -69,6 +90,8 @@ export async function draftDesignFromImage(
         ],
       },
     ],
+    providerOptions: THINKING,
+    abortSignal: AbortSignal.timeout(DRAFT_TIMEOUT_MS),
   });
   // Belt and suspenders: the model is instructed to keep the given title
   // verbatim, but only overwriting it here *guarantees* it — no risk of the
@@ -109,6 +132,8 @@ export async function draftCaseStudyFromNotes(notes: string): Promise<CaseStudyD
       '— do not invent features that are not mentioned.\n\nNotes:\n',
       notes,
     ].join(' '),
+    providerOptions: THINKING,
+    abortSignal: AbortSignal.timeout(DRAFT_TIMEOUT_MS),
   });
   return object;
 }

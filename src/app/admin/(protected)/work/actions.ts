@@ -29,6 +29,11 @@ export async function draftDesign(_prev: DraftState, formData: FormData): Promis
     return { draft };
   } catch (error) {
     console.error('[work] AI drafting failed:', error);
+    // A timeout is worth naming: it means the model is slow right now, not
+    // that the artwork was unreadable, and retrying may well work.
+    if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+      return { error: 'The AI took too long to answer — try again, or fill the fields in by hand below.' };
+    }
     return { error: 'Could not draft this one automatically — fill the fields in by hand below.' };
   }
 }

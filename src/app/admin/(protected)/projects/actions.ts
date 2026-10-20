@@ -19,6 +19,9 @@ export async function draftProject(_prev: DraftState, formData: FormData): Promi
     return { draft };
   } catch (error) {
     console.error('[projects] AI drafting failed:', error);
+    if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+      return { error: 'The AI took too long to answer — try again, or fill the fields in by hand below.' };
+    }
     return { error: 'Could not draft this automatically — fill the fields in by hand below.' };
   }
 }
