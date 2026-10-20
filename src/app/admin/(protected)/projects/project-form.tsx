@@ -6,6 +6,7 @@ import { useRef, useState, useTransition } from 'react';
 import type { CaseStudyDraft } from '@/lib/ai';
 import { normalizeFeatures } from '@/lib/case-study-shape';
 import { slugify } from '@/lib/slug';
+import { uploadOriginal } from '@/lib/upload-client';
 import { draftProject, saveProject } from './actions';
 
 export type ProjectInitial = {
@@ -175,10 +176,20 @@ export function ProjectForm({ initial }: { initial?: ProjectInitial }) {
     fd.set('featured', String((document.getElementById('featured') as HTMLInputElement)?.checked ?? false));
 
     const file = fileRef.current?.files?.[0];
-    if (file) fd.set('image', file);
 
     setSaveError(null);
     startTransition(async () => {
+      if (file) {
+        try {
+          // Uploaded straight to Storage, so a full-size screenshot is not
+          // bounded by what a Server Action may receive.
+          fd.set('stagedPath', await uploadOriginal(file));
+        } catch (error) {
+          console.error('[projects] upload failed:', error);
+          setSaveError(error instanceof Error ? error.message : 'The upload failed — try again.');
+          return;
+        }
+      }
       const result = await saveProject({}, fd);
       if (result.error) {
         setSaveError(result.error);

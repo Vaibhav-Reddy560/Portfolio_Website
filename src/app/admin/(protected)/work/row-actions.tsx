@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useOptimistic, useRef, useState, useTransition } from 'react';
+import { uploadOriginal } from '@/lib/upload-client';
 import { attachImage, deleteDesign, togglePublish, updateDesignMeta } from './actions';
 
 export type DesignMeta = {
@@ -117,7 +118,17 @@ export function AttachImageButton({ id, hasImage }: { id: string; hasImage: bool
     setError(null);
     startTransition(async () => {
       const fd = new FormData();
-      fd.set('image', file);
+      try {
+        // Direct to Storage: the original keeps its full resolution, and its
+        // size is no longer bounded by what a Server Action may receive.
+        fd.set('stagedPath', await uploadOriginal(file));
+      } catch (uploadError) {
+        console.error('[work] upload failed:', uploadError);
+        setError(
+          uploadError instanceof Error ? uploadError.message : 'The upload failed — try again.',
+        );
+        return;
+      }
       const result = await attachImage(id, fd);
       if (result.error) {
         setError(result.error);

@@ -5,6 +5,7 @@ import { draftDesignFromImage, type DesignDraft } from '@/lib/ai';
 import { processArtwork, processThumbnail } from '@/lib/images';
 import { slugify } from '@/lib/slug';
 import { authClient } from '@/lib/supabase/server';
+import { readUploadedImage } from '@/lib/upload-server';
 
 export type DraftState = { draft?: DesignDraft; error?: string };
 
@@ -45,11 +46,6 @@ export async function saveDesign(_prev: SaveState, formData: FormData): Promise<
   } = await supabase.auth.getUser();
   if (!user) return { error: 'Session expired — sign in again.' };
 
-  const file = formData.get('image');
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: 'The image is missing — go back and choose it again.' };
-  }
-
   const title = String(formData.get('title') ?? '').trim();
   const context = String(formData.get('context') ?? '').trim();
   const kind = String(formData.get('kind') ?? '').trim();
@@ -61,8 +57,16 @@ export async function saveDesign(_prev: SaveState, formData: FormData): Promise<
     return { error: 'Title and context are required.' };
   }
 
+  // Read the artwork only once the metadata is known to be valid — fetching a
+  // 35MB staged original just to reject it for a missing title would be a
+  // wasted round trip, and would leave the staging copy behind.
+  const source = await readUploadedImage(formData);
+  if ('error' in source) {
+    return { error: source.error };
+  }
+
   try {
-    const bytes = Buffer.from(await file.arrayBuffer());
+    const bytes = source.bytes;
     const [processed, thumb] = await Promise.all([processArtwork(bytes), processThumbnail(bytes)]);
 
     const baseSlug = slugify(title);
@@ -100,6 +104,7 @@ export async function saveDesign(_prev: SaveState, formData: FormData): Promise<
     });
     if (insertError) throw insertError;
 
+    await source.cleanup();
     revalidatePath('/');
     return { slug };
   } catch (error) {
@@ -122,9 +127,9 @@ export async function attachImage(id: string, formData: FormData): Promise<Attac
   } = await supabase.auth.getUser();
   if (!user) return { error: 'Session expired — sign in again.' };
 
-  const file = formData.get('image');
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: 'Choose an image first.' };
+  const source = await readUploadedImage(formData);
+  if ('error' in source) {
+    return { error: source.error };
   }
 
   const { data: row, error: fetchError } = await supabase
@@ -135,7 +140,7 @@ export async function attachImage(id: string, formData: FormData): Promise<Attac
   if (fetchError || !row) return { error: 'Could not find that design.' };
 
   try {
-    const bytes = Buffer.from(await file.arrayBuffer());
+    const bytes = source.bytes;
     const [processed, thumb] = await Promise.all([processArtwork(bytes), processThumbnail(bytes)]);
     const path = `designs/${row.slug}.png`;
     const thumbPath = `designs/${row.slug}-thumb.webp`;
@@ -170,6 +175,7 @@ export async function attachImage(id: string, formData: FormData): Promise<Attac
       .eq('id', id);
     if (updateError) throw updateError;
 
+    await source.cleanup();
     revalidatePath('/');
     return {};
   } catch (error) {

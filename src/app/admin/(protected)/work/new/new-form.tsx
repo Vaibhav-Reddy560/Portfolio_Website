@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState, useTransition } from 'react';
 import type { DesignDraft } from '@/lib/ai';
 import { downscaleForDrafting } from '@/lib/image-client';
+import { uploadOriginal } from '@/lib/upload-client';
 import { draftDesign, saveDesign } from '../actions';
 
 const KNOWN_KINDS = [
@@ -41,6 +42,9 @@ export function NewWorkForm() {
   const [draftError, setDraftError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // A full-resolution original can take a while to reach Storage, so the
+  // button says which half of the save is running rather than just "Saving…".
+  const [uploading, setUploading] = useState(false);
 
   const onFileChange = () => {
     const file = fileRef.current?.files?.[0];
@@ -114,7 +118,19 @@ export function NewWorkForm() {
 
     startTransition(async () => {
       const fd = new FormData();
-      fd.set('image', file);
+      try {
+        // Straight into Storage, at full resolution — a Server Action could
+        // never receive this file, and nothing is downscaled on the way.
+        setUploading(true);
+        fd.set('stagedPath', await uploadOriginal(file));
+      } catch (error) {
+        console.error('[work] upload failed:', error);
+        setSaveError(error instanceof Error ? error.message : 'The upload failed — try again.');
+        return;
+      } finally {
+        setUploading(false);
+      }
+
       fd.set('title', title);
       fd.set('context', context);
       fd.set('kind', (document.getElementById('kind') as HTMLInputElement)?.value ?? '');
@@ -281,7 +297,7 @@ export function NewWorkForm() {
               onClick={() => onSave(true)}
               className="btn btn-primary"
             >
-              {pending ? 'Saving…' : 'Publish now'}
+              {uploading ? 'Uploading…' : pending ? 'Saving…' : 'Publish now'}
             </button>
             <button type="button" disabled={pending} onClick={() => onSave(false)} className="btn">
               Save as draft

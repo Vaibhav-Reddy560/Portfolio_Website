@@ -2,11 +2,10 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
-export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
-
-/** True only when the environment is wired up; loaders fall back when false. */
-export const supabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+// Defined in ./shared so the browser client can read them too; re-exported
+// here because everything server-side already imports them from this module.
+export { SUPABASE_ANON_KEY, SUPABASE_URL, supabaseConfigured } from './shared';
+import { SUPABASE_ANON_KEY, SUPABASE_URL, supabaseConfigured } from './shared';
 
 /**
  * Anonymous read-only client for public pages.

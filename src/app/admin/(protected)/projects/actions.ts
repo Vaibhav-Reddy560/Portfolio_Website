@@ -5,6 +5,7 @@ import { draftCaseStudyFromNotes, type CaseStudyDraft } from '@/lib/ai';
 import { processArtwork } from '@/lib/images';
 import { slugify } from '@/lib/slug';
 import { authClient } from '@/lib/supabase/server';
+import { readUploadedImage } from '@/lib/upload-server';
 
 export type DraftState = { draft?: CaseStudyDraft; error?: string };
 
@@ -76,12 +77,17 @@ export async function saveProject(_prev: SaveState, formData: FormData): Promise
     featured,
   };
 
-  const file = formData.get('image');
+  // Optional here — a project can be saved without touching its screenshot —
+  // so an absent image is not an error, unlike in the designs admin.
+  const hasImage =
+    Boolean(String(formData.get('stagedPath') ?? '').trim()) ||
+    (formData.get('image') instanceof File && (formData.get('image') as File).size > 0);
 
   try {
-    if (file instanceof File && file.size > 0) {
-      const bytes = Buffer.from(await file.arrayBuffer());
-      const processed = await processArtwork(bytes, { trim: false });
+    if (hasImage) {
+      const source = await readUploadedImage(formData);
+      if ('error' in source) return { error: source.error };
+      const processed = await processArtwork(source.bytes, { trim: false });
       const path = `projects/${id || slugify(name)}/product.png`;
       const { error: uploadError } = await supabase.storage
         .from('work')
@@ -89,6 +95,7 @@ export async function saveProject(_prev: SaveState, formData: FormData): Promise
       if (uploadError) throw uploadError;
       row.image_path = path;
       row.blur_data_url = processed.blurDataURL;
+      await source.cleanup();
     }
 
     if (id) {
