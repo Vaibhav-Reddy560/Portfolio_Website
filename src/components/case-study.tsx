@@ -377,7 +377,10 @@ export function ProductSlot({
           src={src}
           alt={alt ?? `${label} product screenshot`}
           fill
-          unoptimized
+          // Optimised, not raw: these are full-resolution PNGs — the committed
+          // Opacitys shot alone is 4.7MB, and the ones in Storage cost egress
+          // on every visit. The frame is ~500px wide at most.
+          sizes="(min-width: 1024px) 40vw, 100vw"
           placeholder={blurDataURL ? 'blur' : undefined}
           blurDataURL={blurDataURL}
           className="object-cover"
