@@ -199,6 +199,22 @@ const STATIC_CASE_STUDIES: CaseStudyProject[] = [
 ];
 
 /**
+ * Case-study screenshots that ship with the deployment, by slug.
+ *
+ * Same reasoning as `committedArtwork`: a shot served from Storage costs
+ * bandwidth on every visit, and bandwidth is what got this project restricted.
+ * Easy Club and Opacitys were always local; PathOS's is rebuilt from the app's
+ * own screenshots by scripts in that repo. SatQuery AI and This Portfolio are
+ * still served from Storage — their originals exist nowhere but there, and the
+ * project is restricted, so they cannot be pulled down until it is restored.
+ */
+const committedProductShots: Record<string, string> = {
+  'easy-club': '/work/easy-club/product.png',
+  opacitys: '/work/opacitys/product.png',
+  pathos: '/work/pathos/product.webp',
+};
+
+/**
  * Every featured, published project with its full case-study payload — not
  * just the two originals. `featured` gates which projects get an expanded
  * section on the homepage (as opposed to just the compact grid from
@@ -229,7 +245,7 @@ export const getCaseStudies = unstable_cache(
           thesis: row.thesis ?? undefined,
           stack: row.stack ?? [],
           note: row.note ?? undefined,
-          image: imageUrl(row.image_path),
+          image: committedProductShots[row.slug] ?? imageUrl(row.image_path),
           blurDataURL: row.blur_data_url ?? undefined,
           alt: row.alt ?? undefined,
           detail: (row.detail ?? {}) as ProjectDetail,
