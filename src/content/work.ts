@@ -32,6 +32,16 @@ export type DesignPiece = {
  * Adding a piece: put the file at `public/work/designs/<slug>.webp`, add the
  * entry here with its true ratio, then upload through the admin. Both layers
  * then hold it, and neither one alone is a single point of failure.
+ *
+ * Removing one: delete it here too. A piece deleted through the admin but left
+ * in this list comes back the moment the database is unreachable — which is how
+ * "Chapter Identity 2026" and "Open Source Week", both deleted in the admin,
+ * reappeared on the live site during an outage.
+ *
+ * These files are also what the gallery serves when the database *is* up: see
+ * `committedArtwork` in src/lib/content.ts. Keep the webp here even for a piece
+ * managed through the admin, or the site goes back to serving 12MB originals
+ * out of Storage.
  */
 export const designs: DesignPiece[] = [
   { slug: 'utsav-inauguration-lineup', title: 'Inauguration & Artist Lineup', context: 'UTSAV 2026', kind: 'Poster series', year: '2026', ratio: 0.8, src: '/work/designs/utsav-inauguration-lineup.webp' },
@@ -45,11 +55,9 @@ export const designs: DesignPiece[] = [
   { slug: 'easy-club-launch', title: 'Easy Club Launch', context: 'Easy Club', kind: 'Product poster', year: '2025', ratio: 0.8, src: '/work/designs/easy-club-launch.webp' },
   { slug: 'agentic-ai-unpacked', title: 'Agentic AI Unpacked', context: 'BMSCE IEEE CS × GitHub', kind: 'Speaker session', year: '2025', ratio: 0.803, src: '/work/designs/agentic-ai-unpacked.webp' },
   { slug: 'repogenesis', title: 'RepoGenesis', context: 'Open Source Week', kind: 'Hackathon poster', year: '2025', ratio: 0.799, src: '/work/designs/repogenesis.webp' },
-  { slug: 'open-source-week-lockup', title: 'Open Source Week', context: 'BMSCE IEEE CS', kind: 'Type lockup', year: '2025', ratio: 3.944, src: '/work/designs/open-source-week-lockup.webp' },
   { slug: 'data-heist', title: 'Data Heist', context: 'Phase Shift 2025', kind: 'Event poster', year: '2025', ratio: 0.998, src: '/work/designs/data-heist.webp' },
   { slug: 'holoverse-360', title: 'Holoverse 360', context: 'BMSCE IEEE CS', kind: 'Workshop poster', year: '2025', ratio: 0.999, src: '/work/designs/holoverse-360.webp' },
   { slug: 'wattweb', title: 'WattWeb', context: 'PES Day 2025', kind: 'Event poster', year: '2025', ratio: 1.0, src: '/work/designs/wattweb.webp' },
-  { slug: 'ieee-cs-2026-identity', title: 'Chapter Identity 2026', context: 'BMSCE IEEE CS', kind: 'Identity graphic', year: '2026', ratio: 0.925, src: '/work/designs/ieee-cs-2026-identity.webp' },
   { slug: 'ieee-cs-bc-student-chairs-meetup', title: 'Student Chairs Meet Up', context: 'IEEE CS Bangalore Chapter', kind: 'Event poster', year: '2026', ratio: 0.8, src: '/work/designs/ieee-cs-bc-student-chairs-meetup.webp' },
   { slug: 'tech-for-good-summit', title: 'Tech for Good Summit', context: 'BMSCE IEEE CS × WIE', kind: 'Teaser poster', year: '2026', ratio: 0.8, src: '/work/designs/tech-for-good-summit.webp' },
   { slug: 'out-campus-campaigning', title: 'Out Campus Campaigning', context: 'Phase Shift', kind: 'Event poster', year: '2025', ratio: 0.8, src: '/work/designs/out-campus-campaigning.webp' },

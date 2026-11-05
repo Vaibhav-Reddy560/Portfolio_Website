@@ -55,6 +55,25 @@ async function withFallback<T>(
 
 /* ------------------------------------------------------------------ work -- */
 
+/**
+ * Slug → the committed webp for that piece, where one exists.
+ *
+ * The gallery used to serve `image_path` straight from Supabase Storage, which
+ * holds the full-resolution original the admin uploaded — 8-12MB of lossless
+ * PNG each. Twenty-four of those is roughly 200MB of egress per visitor who
+ * scrolls the gallery, and it exhausted the project's whole monthly bandwidth
+ * allowance: Supabase restricted the project with `exceed_cached_egress_quota`,
+ * which takes down the database, storage and sign-in together.
+ *
+ * The same pieces already ship with the deployment at 1400px, 144KB each —
+ * 3.7MB for all of them — because they are the offline fallback. Serving those
+ * costs no Storage egress at all, so the gallery now prefers them and keeps
+ * Storage for pieces the repo does not have a copy of yet.
+ */
+const committedArtwork = new Map(
+  staticDesigns.flatMap((piece) => (piece.src ? [[piece.slug, piece.src] as const] : [])),
+);
+
 export const getDesigns = unstable_cache(
   async (): Promise<DesignPiece[]> =>
     withFallback<DesignPiece>(
@@ -73,7 +92,7 @@ export const getDesigns = unstable_cache(
           kind: row.kind,
           year: row.year,
           ratio: Number(row.ratio),
-          src: imageUrl(row.image_path),
+          src: committedArtwork.get(row.slug) ?? imageUrl(row.image_path),
           alt: row.alt ?? undefined,
         }));
       },

@@ -186,7 +186,7 @@ function Slot({
             alt={piece.alt ?? `${piece.title} — ${piece.kind} for ${piece.context}`}
             width={1400}
             height={Math.round(1400 / piece.ratio)}
-            unoptimized
+            sizes="(min-width: 1024px) 420px, (min-width: 640px) 50vw, 100vw"
             className="w-full border-b-2 border-navy bg-crt"
           />
         ) : (
@@ -366,7 +366,7 @@ function Lightbox({
                     src={piece.src}
                     alt={piece.alt ?? `${piece.title} — ${piece.kind} for ${piece.context}`}
                     fill
-                    unoptimized
+                    sizes="(min-width: 1024px) 70vw, 100vw"
                     className="border-2 border-navy bg-crt object-contain"
                   />
                 </div>
