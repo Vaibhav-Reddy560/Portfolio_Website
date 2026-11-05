@@ -31,6 +31,14 @@ const TRANSPORT_PATTERNS = [
   'etimedout',
   'socket hang up',
   'timeout',
+  // Supabase restricts a project that exceeds its plan's quota and answers
+  // every endpoint — database, storage and auth — with this. It is the
+  // backend being unavailable, not a rejected credential, and November 2026
+  // proved the difference matters: a restricted project reported "Incorrect
+  // email or password" to an operator whose password was perfectly correct.
+  'service for this project is restricted',
+  'exceeded your plan',
+  'quota',
 ];
 
 export function isBackendUnreachable(error: SupabaseErrorLike): boolean {
@@ -40,8 +48,12 @@ export function isBackendUnreachable(error: SupabaseErrorLike): boolean {
   if (error.name === 'AuthRetryableFetchError') return true;
 
   // 0 is "never got a response"; 5xx is the service failing rather than
-  // rejecting. A 4xx is a genuine answer and must not land here.
-  if (typeof error.status === 'number' && (error.status === 0 || error.status >= 500)) return true;
+  // rejecting; 402 is Supabase refusing to serve the project at all because
+  // the organisation is over quota. Every other 4xx is a genuine answer about
+  // the request itself and must not land here.
+  if (typeof error.status === 'number') {
+    if (error.status === 0 || error.status === 402 || error.status >= 500) return true;
+  }
 
   const message = (error.message ?? '').toLowerCase();
   return TRANSPORT_PATTERNS.some((pattern) => message.includes(pattern));
