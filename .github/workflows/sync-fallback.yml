@@ -1,0 +1,65 @@
+# Keeps the repo's copy of the site in step with the database.
+#
+# The public site renders `database ?? static file`, so the static copy is what
+# visitors see during an outage — and twice now it has been weeks out of date,
+# showing old work with no sign anything was missing. Running the sync daily
+# means the worst case is one day behind instead of one month.
+#
+# The job commits only when something actually changed, and the script refuses
+# to write at all if the database is unreachable or returns a suspiciously
+# small set, so an outage can never empty the fallback it exists to provide.
+name: Sync fallback content
+
+on:
+  schedule:
+    # 03:30 UTC — 09:00 in Bengaluru, after anything added the night before.
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-fallback
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Pull published content into the repo
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: node scripts/sync-fallback.mjs
+
+      # A broken fallback is worse than a stale one: it would fail the deploy
+      # and take the live site down with it.
+      - name: Check it still builds
+        run: npx tsc --noEmit
+
+      - name: Commit if anything changed
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "already in step with the database"
+            exit 0
+          fi
+          git config user.name "Vaibhav-Reddy560"
+          git config user.email "vaibhav.reddy560@gmail.com"
+          git add src/content/work.ts public/work/designs
+          git commit -m "Sync the offline copy with the published content
+
+          Written by .github/workflows/sync-fallback.yml so the static fallback
+          in src/content/work.ts matches what the admin currently publishes,
+          images included. Without this the site shows stale work whenever the
+          database is unreachable."
+          git push

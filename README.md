@@ -117,8 +117,22 @@ All copy is in `src/content/` — `profile.ts`, `experience.ts`, `skills.ts`,
 
 Those files are also the fallback. Every loader in `src/lib/content.ts` reads
 `database ?? static file`, so the public site renders in full even with Supabase
-unreachable — provided the static copy is complete. Keep it that way: a project
-or design added through the admin must be copied back here, images included.
+unreachable — provided the static copy is complete.
+
+`npm run sync` keeps it complete: it pulls the published designs and projects
+into `src/content/work.ts`, downloads a 1400px webp for anything new into
+`public/work/designs/`, and drops pieces that were deleted in the admin. It
+refuses to write anything if the database is unreachable or returns an
+implausibly small set, so an outage cannot empty the fallback.
+
+`.github/workflows/sync-fallback.yml` runs it daily and commits any change, so
+this does not depend on anyone remembering. It needs two repository secrets:
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+The gallery also *serves* those committed webps rather than the originals in
+Storage — see `committedArtwork` in `src/lib/content.ts`. Serving the originals
+is what exhausted the project's bandwidth quota in November 2026 and restricted
+the whole project, sign-in included.
 
 ## AI drafting
 
