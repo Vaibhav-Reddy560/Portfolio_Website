@@ -16,6 +16,13 @@ export type DesignPiece = {
    */
   src?: string;
   alt?: string;
+  /**
+   * The file exactly as it was uploaded, byte for byte, committed under
+   * `public/work/originals/` (scripts/pull-originals.mjs). The gallery shows
+   * it when a design is opened; the grid uses `src`. Filled in from
+   * src/content/originals.json by the loader, not written here.
+   */
+  original?: { src: string; bytes: number; width: number; height: number };
 };
 
 /**

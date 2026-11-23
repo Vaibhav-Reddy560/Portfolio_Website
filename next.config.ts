@@ -28,6 +28,9 @@ const nextConfig: NextConfig = {
     proxyClientMaxBodySize: '50mb',
   },
   images: {
+    // 90 for the design gallery, so the grid keeps the work's detail; 75
+    // (Next's default) for everything else.
+    qualities: [75, 90],
     remotePatterns: supabaseHost
       ? [
           {

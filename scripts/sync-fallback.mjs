@@ -31,9 +31,13 @@ const ROOT = rootArg === -1 ? process.cwd() : path.resolve(args[rootArg + 1]);
 
 const WORK_TS = path.join(ROOT, 'src/content/work.ts');
 const DESIGN_DIR = path.join(ROOT, 'public/work/designs');
-/** Matches scripts/build-assets.mjs, so synced and hand-built art are alike. */
-const IMAGE_WIDTH = 1400;
-const IMAGE_QUALITY = 82;
+/**
+ * Matches the grid copies scripts/pull-originals.mjs makes from the originals,
+ * so every piece in the gallery is equally sharp (that script also replaces
+ * this copy with one made from the original file, when it has it).
+ */
+const IMAGE_WIDTH = 2000;
+const IMAGE_QUALITY = 92;
 /** A sync that would drop more than this share of the gallery is treated as wrong. */
 const MAX_DELETION_SHARE = 0.34;
 

@@ -42,6 +42,14 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: node scripts/sync-fallback.mjs
 
+      # Each design's original, byte for byte, for the gallery's viewer, and a
+      # grid copy made from it.
+      - name: Pull the originals
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: node scripts/pull-originals.mjs
+
       # A broken fallback is worse than a stale one: it would fail the deploy
       # and take the live site down with it.
       - name: Check it still builds
@@ -55,7 +63,7 @@ jobs:
           fi
           git config user.name "Vaibhav-Reddy560"
           git config user.email "vaibhav.reddy560@gmail.com"
-          git add src/content/work.ts public/work/designs
+          git add src/content/work.ts src/content/originals.json public/work/designs public/work/originals
           git commit -m "Sync the offline copy with the published content
 
           Written by .github/workflows/sync-fallback.yml so the static fallback

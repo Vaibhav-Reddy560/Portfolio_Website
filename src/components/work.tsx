@@ -184,8 +184,9 @@ function Slot({
           <Image
             src={piece.src as string}
             alt={piece.alt ?? `${piece.title} — ${piece.kind} for ${piece.context}`}
-            width={1400}
-            height={Math.round(1400 / piece.ratio)}
+            width={2000}
+            height={Math.round(2000 / piece.ratio)}
+            quality={90}
             sizes="(min-width: 1024px) 420px, (min-width: 640px) 50vw, 100vw"
             className="w-full border-b-2 border-navy bg-crt"
           />
@@ -245,6 +246,81 @@ function EmptySlot({ piece }: { piece: DesignPiece }) {
         </p>
         <p className="t-data mt-1 text-[9px] text-phosphor/30">{piece.kind}</p>
       </div>
+    </div>
+  );
+}
+
+const megabytes = (bytes: number) => `${(bytes / 1e6).toFixed(bytes < 1e7 ? 1 : 0)} MB`;
+
+/**
+ * The opened design. The grid copy shows at once; the original (the uploaded
+ * file, byte for byte, never re-encoded) loads behind it and takes over the
+ * moment it arrives. "Actual size" shows it pixel for pixel, to scroll around.
+ * On a data-saver connection the original waits to be asked for.
+ */
+function ViewerImage({ piece }: { piece: DesignPiece }) {
+  const original = piece.original;
+  const [wanted, setWanted] = useState(() => {
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    return !connection?.saveData;
+  });
+  const [loaded, setLoaded] = useState(false);
+  const [actual, setActual] = useState(false);
+  const alt = piece.alt ?? `${piece.title} — ${piece.kind} for ${piece.context}`;
+  const format = original?.src.split('.').pop()?.toUpperCase();
+
+  return (
+    <div className="grid h-full w-full grid-rows-[1fr_auto] gap-2">
+      {/* A grid row's `1fr` track gets a genuinely definite size once the
+          grid container's height is resolved (here, by max-height), unlike a
+          flex-1 chain with only max-height on the ancestor — which left
+          `fill`'s containing block height indefinite and collapsed it to ~0. */}
+      {actual && original ? (
+        <div className="min-h-0 overflow-auto border-2 border-navy bg-crt">
+          <Image src={original.src} alt={alt} width={original.width} height={original.height} unoptimized className="max-w-none" />
+        </div>
+      ) : (
+        <div className="relative min-h-0 border-2 border-navy bg-crt">
+          <Image src={piece.src as string} alt={alt} fill quality={90} sizes="(min-width: 1024px) 64rem, 100vw" className="object-contain" />
+          {original && wanted ? (
+            <Image
+              src={original.src}
+              alt=""
+              aria-hidden
+              fill
+              unoptimized
+              onLoad={() => setLoaded(true)}
+              className={`object-contain transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          ) : null}
+        </div>
+      )}
+      {original ? (
+        <div className="t-data flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.12em] text-navy/70">
+          <span>
+            {loaded
+              ? `Original · ${original.width.toLocaleString('en')} × ${original.height.toLocaleString('en')} px · ${format} · ${megabytes(original.bytes)}`
+              : wanted
+                ? `Loading the original · ${megabytes(original.bytes)}…`
+                : `Preview · the original is ${megabytes(original.bytes)}`}
+          </span>
+          <span className="flex gap-2">
+            {!wanted ? (
+              <button type="button" onClick={() => setWanted(true)} className="border-2 border-navy bg-bone px-2 py-1 hover:bg-amber">
+                Load original
+              </button>
+            ) : null}
+            {loaded ? (
+              <button type="button" onClick={() => setActual((a) => !a)} aria-pressed={actual} className="border-2 border-navy bg-bone px-2 py-1 hover:bg-amber">
+                {actual ? 'Fit to view' : 'Actual size'}
+              </button>
+            ) : null}
+            <a href={original.src} target="_blank" rel="noreferrer" className="border-2 border-navy bg-bone px-2 py-1 hover:bg-amber">
+              Open file ↗
+            </a>
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -318,7 +394,7 @@ function Lightbox({
     >
       {piece ? (
         <div className="flex h-full items-center justify-center p-3 sm:p-6">
-          <div className="panel grid h-[80dvh] w-full max-w-3xl grid-rows-[auto_1fr] overflow-hidden">
+          <div className="panel grid h-[86dvh] w-full max-w-5xl grid-rows-[auto_1fr] overflow-hidden">
             <header className="flex min-w-0 items-stretch justify-between border-b-2 border-navy bg-bone-dk">
               <div className="min-w-0 px-3 py-2">
                 <p className="t-head truncate text-sm uppercase">{piece.title}</p>
@@ -355,22 +431,7 @@ function Lightbox({
             </header>
 
             <div className="min-h-0 min-w-0 bg-bone-dk p-3">
-              {piece.src ? (
-                <div className="relative h-full w-full">
-                  {/* A grid row's `1fr` track gets a genuinely definite size
-                      once the grid container's height is resolved (here, by
-                      max-height), unlike a flex-1 chain with only max-height
-                      on the ancestor — which left `fill`'s containing block
-                      height indefinite and collapsed it to ~0. */}
-                  <Image
-                    src={piece.src}
-                    alt={piece.alt ?? `${piece.title} — ${piece.kind} for ${piece.context}`}
-                    fill
-                    sizes="(min-width: 1024px) 70vw, 100vw"
-                    className="border-2 border-navy bg-crt object-contain"
-                  />
-                </div>
-              ) : null}
+              {piece.src ? <ViewerImage key={piece.slug} piece={piece} /> : null}
             </div>
           </div>
         </div>

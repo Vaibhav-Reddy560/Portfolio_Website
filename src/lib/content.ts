@@ -21,6 +21,7 @@ import { easyClub as staticEasyClub, opacitys as staticOpacitys } from '@/conten
 import { additionalRoles as staticAdditional, experience as staticExperience, type Role } from '@/content/experience';
 import { profile as staticProfile, tools } from '@/content/profile';
 import { education as staticEducation, skillGroups as staticSkillGroups } from '@/content/skills';
+import originals from '@/content/originals.json';
 import { builds as staticBuilds, designs as staticDesigns, type BuildProject, type DesignPiece } from '@/content/work';
 import { readClient, supabaseConfigured, SUPABASE_URL } from './supabase/server';
 
@@ -74,6 +75,16 @@ const committedArtwork = new Map(
   staticDesigns.flatMap((piece) => (piece.src ? [[piece.slug, piece.src] as const] : [])),
 );
 
+/**
+ * Slug → the uploaded file itself, committed byte for byte under
+ * public/work/originals (scripts/pull-originals.mjs). Served from the
+ * deployment, and only when someone opens a design, never in the grid: the
+ * originals add up to about 320MB.
+ */
+const committedOriginals = originals as Record<string, NonNullable<DesignPiece['original']>>;
+const withOriginal = (piece: DesignPiece): DesignPiece =>
+  committedOriginals[piece.slug] ? { ...piece, original: committedOriginals[piece.slug] } : piece;
+
 export const getDesigns = unstable_cache(
   async (): Promise<DesignPiece[]> =>
     withFallback<DesignPiece>(
@@ -94,9 +105,9 @@ export const getDesigns = unstable_cache(
           ratio: Number(row.ratio),
           src: committedArtwork.get(row.slug) ?? imageUrl(row.image_path),
           alt: row.alt ?? undefined,
-        }));
+        })).map(withOriginal);
       },
-      staticDesigns,
+      staticDesigns.map(withOriginal),
     ),
   ['designs'],
   { tags: [CONTENT_TAG], revalidate: 5 },
