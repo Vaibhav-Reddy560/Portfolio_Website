@@ -150,6 +150,16 @@ export const builds: BuildProject[] = [
     stack: ['Swift 6', 'SwiftUI', 'MapKit', 'SwiftData', 'CoreLocation', 'FoundationModels'],
     summary:
       "An iPhone app that plans a Bengaluru journey end to end — an auto to the metro, the metro across the city, another auto at the far end — each leg with its own time and fare. Mail and timetables are read by Apple's on-device model, so nothing about the day leaves the phone.",
+  },  {
+    slug: 'patchproof',
+    title: 'PatchProof',
+    tagline: 'Find the flaw. Prove the fix.',
+    year: '2026',
+    href: 'https://github.com/Vaibhav-Reddy560/Trinity-Project',
+    hrefLabel: 'github.com/Vaibhav-Reddy560/Trinity-Project',
+    stack: ['Python', 'LibCST', 'FastAPI', 'TinyDB', 'React', 'TypeScript', 'Vite', 'Tailwind CSS', 'shadcn/ui'],
+    summary:
+      "An automated AppSec remediation engine, built in a 24-hour hackathon by a team of three. It scans code for security weaknesses, proves each one with a live exploit, patches it with syntax-preserving LibCST transforms (or an AI-written fix where no rule applies), and counts nothing as fixed until the exploit is blocked and the app's regression suite still passes.",
   },
 ];
 

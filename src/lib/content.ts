@@ -223,6 +223,7 @@ const committedProductShots: Record<string, string> = {
   'easy-club': '/work/easy-club/product.png',
   opacitys: '/work/opacitys/product.png',
   pathos: '/work/pathos/product.webp',
+  patchproof: '/work/patchproof/product.webp',
 };
 
 /**
